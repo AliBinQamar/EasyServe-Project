@@ -18,7 +18,7 @@ import AdminDashboardScreen from "../screens/admin/AdminDashboardScreen";
 import AdminLoginScreen from "../screens/admin/AdminLoginScreen";
 import ManageCategoriesScreen from "../screens/admin/ManageCategoriesScreen";
 import ManageProvidersScreen from "../screens/admin/ManageProvidersScreen";
-import ViewBookingScreen from "../screens/admin/ViewBookingScreen";
+import ManageBookingScreen from "../screens/admin/ManageBookingScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -48,7 +48,7 @@ export default function AppNavigator() {
             <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
             <Stack.Screen name="ManageCategories" component={ManageCategoriesScreen} />
             <Stack.Screen name="ManageProviders" component={ManageProvidersScreen} />
-            <Stack.Screen name="ViewBookings" component={ViewBookingScreen} />
+            <Stack.Screen name="ManageBookings" component={ManageBookingScreen} />
         </Stack.Navigator>
     );
 }

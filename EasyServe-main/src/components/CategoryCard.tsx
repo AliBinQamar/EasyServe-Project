@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Category } from '../types/category';
+import { Category } from '../types'; // ← UPDATED IMPORT
 
 interface Props {
     category: Category;

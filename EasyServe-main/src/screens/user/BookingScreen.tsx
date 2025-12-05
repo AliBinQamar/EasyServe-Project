@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { auth } from '../../config/firebase';
+import { authService } from '../../services/authService';
 import { bookingService } from '../../services/bookingService';
 
 // Conditional import for DateTimePicker (only on mobile)
@@ -23,17 +23,20 @@ export default function BookingScreen({ route, navigation }: any) {
     const [timeInput, setTimeInput] = useState('09:00');
 
     const handleBooking = async () => {
-        if (!auth.currentUser) {
-            Alert.alert('Error', 'Please login first');
-            return;
-        }
-
         setLoading(true);
         try {
+            const user = await authService.getCurrentUser();
+            
+            if (!user) {
+                Alert.alert('Error', 'Please login first');
+                navigation.navigate('Login');
+                return;
+            }
+
             const booking = {
-                userId: auth.currentUser.uid,
-                userName: auth.currentUser.email || 'User',
-                providerId: provider.id,
+                userId: user.id,
+                userName: user.name,
+                providerId: provider.id || provider._id,
                 providerName: provider.name,
                 date: Platform.OS === 'web' ? dateInput : date.toISOString().split('T')[0],
                 time: Platform.OS === 'web' ? timeInput : time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
@@ -45,7 +48,9 @@ export default function BookingScreen({ route, navigation }: any) {
             await bookingService.create(booking);
             navigation.navigate('BookingSuccess');
         } catch (error: any) {
-            Alert.alert('Error', error.message);
+            console.error('Booking Error:', error);
+            const errorMessage = error.response?.data?.message || 'Booking failed. Please try again.';
+            Alert.alert('Error', errorMessage);
         } finally {
             setLoading(false);
         }

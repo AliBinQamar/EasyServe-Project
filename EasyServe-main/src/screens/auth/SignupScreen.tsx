@@ -1,8 +1,6 @@
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { auth, db } from '../../config/firebase';
+import { authService } from '../../services/authService';
 
 export default function SignupScreen({ navigation }: any) {
     const [name, setName] = useState('');
@@ -17,20 +15,21 @@ export default function SignupScreen({ navigation }: any) {
             return;
         }
 
+        if (password.length < 6) {
+            Alert.alert('Error', 'Password must be at least 6 characters');
+            return;
+        }
+
         setLoading(true);
+        
         try {
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            await setDoc(doc(db, 'users', userCredential.user.uid), {
-                name,
-                email,
-                phone,
-                role: 'user',
-                createdAt: new Date()
-            });
+            await authService.signup({ name, email, password, phone });
             Alert.alert('Success', 'Account created successfully!');
-            navigation.replace('Login');
+            navigation.replace('Home');
         } catch (error: any) {
-            Alert.alert('Error', error.message);
+            console.error('Signup Error:', error);
+            const errorMessage = error.response?.data?.message || 'Signup failed. Please try again.';
+            Alert.alert('Error', errorMessage);
         } finally {
             setLoading(false);
         }

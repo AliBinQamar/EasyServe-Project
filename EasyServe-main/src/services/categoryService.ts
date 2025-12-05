@@ -1,26 +1,22 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
-import { Category } from '../types/category';
+import api from '../config/api';
 
 export const categoryService = {
-    async getAll(): Promise<Category[]> {
-        const snapshot = await getDocs(collection(db, 'categories'));
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
-    },
+  async getAll() {
+    const res = await api.get('/categories');
+    return res.data;
+  },
 
-    async create(category: Omit<Category, 'id'>): Promise<string> {
-        const docRef = await addDoc(collection(db, 'categories'), {
-            ...category,
-            createdAt: new Date()
-        });
-        return docRef.id;
-    },
+  async create(category: any) {
+    const res = await api.post('/categories', category);
+    return res.data.category;
+  },
 
-    async update(id: string, category: Partial<Category>): Promise<void> {
-        await updateDoc(doc(db, 'categories', id), category);
-    },
+  async update(id: string, category: any) {
+    const res = await api.put(`/categories/${id}`, category);
+    return res.data.category;
+  },
 
-    async delete(id: string): Promise<void> {
-        await deleteDoc(doc(db, 'categories', id));
-    }
+  async delete(id: string) {
+    await api.delete(`/categories/${id}`);
+  }
 };

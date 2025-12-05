@@ -1,8 +1,6 @@
-import { signInWithEmailAndPassword } from 'firebase/auth';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { auth } from '../../config/firebase';
-import { profileCache } from '../../storage/asyncProfileCache';
+import { authService } from '../../services/authService';
 
 export default function LoginScreen({ navigation }: any) {
     const [email, setEmail] = useState('');
@@ -17,14 +15,12 @@ export default function LoginScreen({ navigation }: any) {
 
         setLoading(true);
         try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            await profileCache.save({
-                uid: userCredential.user.uid,
-                email: userCredential.user.email
-            });
+            await authService.login(email, password);
             navigation.replace('Home');
         } catch (error: any) {
-            Alert.alert('Error', 'Invalid credentials');
+            console.error('Login Error:', error);
+            const errorMessage = error.response?.data?.message || 'Invalid credentials';
+            Alert.alert('Error', errorMessage);
         } finally {
             setLoading(false);
         }

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { auth } from '../../config/firebase';
+import { authService } from '../../services/authService';
 import { bookingService } from '../../services/bookingService';
-import { Booking } from '../../types/booking';
+import { Booking } from '../../types/index';
 
 export default function MyBookingsScreen({ navigation }: any) {
     const [bookings, setBookings] = useState<Booking[]>([]);
@@ -14,9 +14,12 @@ export default function MyBookingsScreen({ navigation }: any) {
 
     const loadBookings = async () => {
         try {
-            if (auth.currentUser) {
-                const data = await bookingService.getByUserId(auth.currentUser.uid);
-                setBookings(data.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()));
+            const user = await authService.getCurrentUser();
+            if (user) {
+                const data = await bookingService.getByUserId(user.id);
+                setBookings(data.sort((a: any, b: any) => 
+                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                ));
             }
         } catch (error) {
             console.error(error);
@@ -66,7 +69,7 @@ export default function MyBookingsScreen({ navigation }: any) {
             ) : (
                 <FlatList
                     data={bookings}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item) => item.id || item._id || Math.random().toString()}
                     renderItem={({ item }) => (
                         <View style={styles.bookingCard}>
                             <View style={styles.cardHeader}>
@@ -97,6 +100,7 @@ export default function MyBookingsScreen({ navigation }: any) {
         </View>
     );
 }
+
 
 const styles = StyleSheet.create({
     container: {

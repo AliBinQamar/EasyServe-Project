@@ -1,8 +1,6 @@
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { auth, db } from '../../config/firebase';
+import { authService } from '../../services/authService';
 
 export default function AdminLoginScreen({ navigation }: any) {
     const [email, setEmail] = useState('');
@@ -17,20 +15,19 @@ export default function AdminLoginScreen({ navigation }: any) {
 
         setLoading(true);
         try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const response = await authService.login(email, password);
 
             // Check if user is admin
-            const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
-            const userData = userDoc.data();
-
-            if (userData?.role === 'admin') {
+            if (response.user.role === 'admin') {
                 navigation.replace('AdminDashboard');
             } else {
-                await auth.signOut();
+                await authService.logout();
                 Alert.alert('Error', 'You do not have admin access');
             }
         } catch (error: any) {
-            Alert.alert('Error', 'Invalid credentials');
+            console.error('Admin Login Error:', error);
+            const errorMessage = error.response?.data?.message || 'Invalid credentials';
+            Alert.alert('Error', errorMessage);
         } finally {
             setLoading(false);
         }
@@ -74,60 +71,71 @@ export default function AdminLoginScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-        justifyContent: 'center',
-        padding: 20,
-    },
-    header: {
-        alignItems: 'center',
-        marginBottom: 40,
-    },
-    badge: {
-        fontSize: 60,
-        marginBottom: 20,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: '#333',
-        marginBottom: 8,
-    },
-    subtitle: {
-        fontSize: 16,
-        color: '#666',
-    },
-    form: {
-        width: '100%',
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 10,
-        padding: 15,
-        marginBottom: 15,
-        fontSize: 16,
-        backgroundColor: '#f9f9f9',
-    },
-    button: {
-        backgroundColor: '#2196F3',
-        padding: 15,
-        borderRadius: 10,
-        alignItems: 'center',
-        marginTop: 10,
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    backLink: {
-        marginTop: 20,
-        alignItems: 'center',
-    },
-    backLinkText: {
-        color: '#666',
-        fontSize: 14,
-    },
+  container: {
+    flex: 1,
+    backgroundColor: '#f0f2f5', // soft background
+    justifyContent: 'center',
+    padding: 25,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  badge: {
+    fontSize: 64,
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+  },
+  form: {
+    width: '100%',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 15,
+    fontSize: 16,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  button: {
+    backgroundColor: '#2196F3',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+    shadowColor: '#2196F3',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  backLink: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  backLinkText: {
+    color: '#666',
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
 });

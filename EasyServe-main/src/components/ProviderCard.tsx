@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Provider } from '../types/provider';
+import { Provider } from '../types'; // ← UPDATED IMPORT
 
 interface Props {
     provider: Provider;

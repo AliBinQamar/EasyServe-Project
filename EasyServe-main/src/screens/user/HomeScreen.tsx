@@ -1,10 +1,13 @@
+// ============================================
+// FILE 1: HomeScreen.tsx (FIXED)
+// ============================================
+
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import CategoryCard from '../../components/CategoryCard';
-import { auth } from '../../config/firebase';
+import { authService } from '../../services/authService';
 import { categoryService } from '../../services/categoryService';
-import { profileCache } from '../../storage/asyncProfileCache';
-import { Category } from '../../types/category';
+import { Category } from '../../types/index';
 
 export default function HomeScreen({ navigation }: any) {
     const [categories, setCategories] = useState<Category[]>([]);
@@ -17,17 +20,27 @@ export default function HomeScreen({ navigation }: any) {
     const loadCategories = async () => {
         try {
             const data = await categoryService.getAll();
+            console.log('✅ Loaded categories:', data.length);
+            
+            // Debug: Check first category structure
+            if (data.length > 0) {
+                console.log('First category:', {
+                    _id: data[0]._id,
+                    id: data[0].id,
+                    name: data[0].name
+                });
+            }
+            
             setCategories(data);
         } catch (error) {
-            console.error(error);
+            console.error('Error loading categories:', error);
         } finally {
             setLoading(false);
         }
     };
 
     const handleLogout = async () => {
-        await auth.signOut();
-        await profileCache.clear();
+        await authService.logout();
         navigation.replace('Login');
     };
 
@@ -57,17 +70,47 @@ export default function HomeScreen({ navigation }: any) {
             ) : (
                 <FlatList
                     data={categories}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item, index) => 
+                        item._id?.toString() || item.id?.toString() || `cat-${index}`
+                    }
                     numColumns={2}
-                    renderItem={({ item }) => (
-                        <CategoryCard
-                            category={item}
-                            onPress={() => navigation.navigate('ProviderList', {
-                                categoryId: item.id,
-                                categoryName: item.name
-                            })}
-                        />
-                    )}
+                    renderItem={({ item }) => {
+                        // ✅ Extract the correct ID (MongoDB uses _id)
+                        const categoryId = item._id?.toString() || item.id?.toString();
+                        const categoryName = item.name || 'Unknown Category';
+
+                        // ✅ Debug log
+                        console.log('Rendering category:', {
+                            name: categoryName,
+                            _id: item._id,
+                            id: item.id,
+                            categoryId: categoryId
+                        });
+
+                        return (
+                            <CategoryCard
+                                category={item}
+                                onPress={() => {
+                                    // ✅ Safety check before navigation
+                                    if (!categoryId) {
+                                        console.error('❌ Category missing ID:', item);
+                                        alert('This category cannot be opened (missing ID)');
+                                        return;
+                                    }
+
+                                    console.log('🚀 Navigating to ProviderList with:', {
+                                        categoryId,
+                                        categoryName
+                                    });
+
+                                    navigation.navigate('ProviderList', {
+                                        categoryId: categoryId,
+                                        categoryName: categoryName
+                                    });
+                                }}
+                            />
+                        );
+                    }}
                     contentContainerStyle={styles.list}
                 />
             )}

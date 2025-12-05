@@ -1,37 +1,37 @@
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
-import { db } from '../config/firebase';
-import { Provider } from '../types/provider';
+import api from '../config/api';
+import { Provider } from '../types';
 
 export const providerService = {
-    async getAll(): Promise<Provider[]> {
-        const snapshot = await getDocs(collection(db, 'providers'));
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Provider));
-    },
+  async getAll(): Promise<Provider[]> {
+    const res = await api.get('/providers');
+    return res.data;
+  },
 
-    async getByCategory(categoryId: string): Promise<Provider[]> {
-        const q = query(collection(db, 'providers'), where('categoryId', '==', categoryId));
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Provider));
-    },
+  async getByCategory(categoryId: string): Promise<Provider[]> {
+    if (!categoryId) throw new Error('Category ID is required');
+    const res = await api.get('/providers', { params: { categoryId } });
+    return res.data;
+  },
 
-    async getById(id: string): Promise<Provider | null> {
-        const docSnap = await getDoc(doc(db, 'providers', id));
-        return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as Provider : null;
-    },
+  async getById(id: string): Promise<Provider> {
+    if (!id) throw new Error('Provider ID is required');
+    const res = await api.get(`/providers/${id}`);
+    return res.data;
+  },
 
-    async create(provider: Omit<Provider, 'id'>): Promise<string> {
-        const docRef = await addDoc(collection(db, 'providers'), {
-            ...provider,
-            createdAt: new Date()
-        });
-        return docRef.id;
-    },
+  async create(provider: Partial<Provider>): Promise<Provider> {
+    const res = await api.post('/providers', provider);
+    return res.data.provider;
+  },
 
-    async update(id: string, provider: Partial<Provider>): Promise<void> {
-        await updateDoc(doc(db, 'providers', id), provider);
-    },
+  async update(id: string, provider: Partial<Provider>): Promise<Provider> {
+    if (!id) throw new Error('Provider ID is required');
+    const res = await api.put(`/providers/${id}`, provider);
+    return res.data.provider;
+  },
 
-    async delete(id: string): Promise<void> {
-        await deleteDoc(doc(db, 'providers', id));
-    }
+  async delete(id: string): Promise<void> {
+    if (!id) throw new Error('Provider ID is required');
+    await api.delete(`/providers/${id}`);
+  },
 };
