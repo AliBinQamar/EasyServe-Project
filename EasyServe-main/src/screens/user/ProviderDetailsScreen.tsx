@@ -1,37 +1,43 @@
+// ============================================
+// screens/user/ProviderDetailsScreen.tsx - FIXED
+// ============================================
+
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { providerService } from '../../services/providerService';
+import { logger } from '../../utils/logger';
+import { formatters } from '../../utils/formatter';
 import { Provider } from '../../types';
 
-interface Props {
-  route: { params?: { providerId?: string } };
-  navigation: any;
-}
+const TAG = 'ProviderDetailsScreen';
 
-export default function ProviderDetailsScreen({ route, navigation }: Props) {
-  const providerId = route.params?.providerId; // only declare once
+export default function ProviderDetailsScreen({ route, navigation }: any) {
+  const { providerId } = route.params;
   const [provider, setProvider] = useState<Provider | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!providerId) {
-      console.error('Provider ID is missing!');
-      setLoading(false);
-      return;
-    }
-    const loadProvider = async () => {
-      try {
-        const data = await providerService.getById(providerId);
-        setProvider(data);
-      } catch (error) {
-        console.error('Error fetching provider:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadProvider();
   }, [providerId]);
+
+  const loadProvider = async () => {
+    try {
+      logger.info(TAG, `Loading provider: ${providerId}`);
+      const data = await providerService.getById(providerId);
+      setProvider(data);
+    } catch (error) {
+      logger.error(TAG, 'Error loading provider', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -43,10 +49,13 @@ export default function ProviderDetailsScreen({ route, navigation }: Props) {
 
   if (!provider) {
     return (
-      <View style={styles.loaderContainer}>
+      <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Provider not found</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>Go Back</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.retryButtonText}>← Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -54,91 +63,204 @@ export default function ProviderDetailsScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-        <Text style={styles.backText}>← Back</Text>
-      </TouchableOpacity>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backButton}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>Provider Details</Text>
+        <View style={{ width: 50 }} />
+      </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.imageContainer}>
-          <Text style={styles.imagePlaceholder}>👤</Text>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.profileCard}>
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatar}>👤</Text>
+          </View>
+          <Text style={styles.name}>{provider.name}</Text>
+          <View style={styles.ratingRow}>
+            <Text style={styles.ratingStars}>⭐</Text>
+            <Text style={styles.ratingText}>
+              {formatters.rating(provider.rating)}
+            </Text>
+          </View>
         </View>
 
-        <Text style={styles.name}>{provider.name}</Text>
-        <Text style={styles.category}>{provider.categoryName || 'Service Provider'}</Text>
-
-        <View style={styles.infoRow}>
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>Price</Text>
-            <Text style={styles.infoValue}>Rs. {provider.price}</Text>
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Category:</Text>
+            <Text style={styles.infoValue}>{provider.categoryName}</Text>
           </View>
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>Rating</Text>
-            <Text style={styles.infoValue}>⭐ {provider.rating}</Text>
-          </View>
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>Area</Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Area:</Text>
             <Text style={styles.infoValue}>{provider.area}</Text>
           </View>
+          {provider.price && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Base Price:</Text>
+              <Text style={styles.priceValue}>
+                {formatters.currency(provider.price)}
+              </Text>
+            </View>
+          )}
+          {provider.phone && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Phone:</Text>
+              <Text style={styles.infoValue}>{provider.phone}</Text>
+            </View>
+          )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Description</Text>
-          <Text style={styles.description}>{provider.description || 'No description available.'}</Text>
-        </View>
+        {provider.description && (
+          <View style={styles.descriptionCard}>
+            <Text style={styles.descriptionTitle}>About</Text>
+            <Text style={styles.description}>{provider.description}</Text>
+          </View>
+        )}
 
-        {provider.reviews?.length ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Reviews</Text>
-            {provider.reviews.map((review, index) => (
-              <View key={index} style={styles.review}>
+        {provider.reviews && provider.reviews.length > 0 && (
+          <View style={styles.reviewsCard}>
+            <Text style={styles.reviewsTitle}>
+              Reviews ({provider.reviews.length})
+            </Text>
+            {provider.reviews.slice(0, 3).map((review, idx) => (
+              <View key={idx} style={styles.review}>
                 <View style={styles.reviewHeader}>
                   <Text style={styles.reviewName}>{review.userName}</Text>
                   <Text style={styles.reviewRating}>⭐ {review.rating}</Text>
                 </View>
-                <Text style={styles.reviewComment}>{review.comment}</Text>
+                <Text style={styles.reviewComment} numberOfLines={2}>
+                  {review.comment}
+                </Text>
               </View>
             ))}
           </View>
-        ) : null}
-      </ScrollView>
+        )}
 
-      <TouchableOpacity
-        style={styles.bookButton}
-        onPress={() => navigation.navigate('Booking', { provider })}
-      >
-        <Text style={styles.bookButtonText}>Book Now</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.contactButton}
+          onPress={() =>
+            navigation.navigate('ServiceRequest', {
+              category: {
+                _id: provider.categoryId,
+                id: provider.categoryId,
+                name: provider.categoryName,
+              },
+            })
+          }
+        >
+          <Text style={styles.contactButtonText}>Request Service</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 }
 
-
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
-  errorText: { fontSize: 16, color: '#666', marginBottom: 20 },
-  backBtn: { paddingHorizontal: 30, paddingVertical: 12, backgroundColor: '#4CAF50', borderRadius: 10 },
-  backBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  backButton: { paddingHorizontal: 20, paddingTop: 50, paddingBottom: 10 },
-  backText: { fontSize: 16, color: '#4CAF50' },
-  content: { paddingHorizontal: 20, paddingBottom: 100 },
-  imageContainer: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', marginVertical: 20 },
-  imagePlaceholder: { fontSize: 60 },
-  name: { fontSize: 24, fontWeight: '700', color: '#333', textAlign: 'center', marginBottom: 8 },
-  category: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 20 },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, gap: 10 },
-  infoCard: { flex: 1, backgroundColor: '#f9f9f9', borderRadius: 12, padding: 15, alignItems: 'center' },
-  infoLabel: { fontSize: 12, color: '#666', marginBottom: 6 },
-  infoValue: { fontSize: 16, fontWeight: '700', color: '#333' },
-  section: { marginBottom: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#333', marginBottom: 12 },
-  description: { fontSize: 15, color: '#666', lineHeight: 24 },
-  review: { backgroundColor: '#f9f9f9', borderRadius: 10, padding: 15, marginBottom: 12 },
-  reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  errorText: { fontSize: 16, color: '#999', marginBottom: 20 },
+  retryButton: { backgroundColor: '#4CAF50', paddingHorizontal: 30, paddingVertical: 12, borderRadius: 10 },
+  retryButtonText: { color: '#fff', fontWeight: '600' },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  backButton: { fontSize: 16, color: '#4CAF50', fontWeight: '600' },
+  title: { fontSize: 20, fontWeight: '800', color: '#333' },
+  content: { padding: 20 },
+  profileCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  avatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F0F9FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  avatar: { fontSize: 40 },
+  name: { fontSize: 22, fontWeight: '800', color: '#333', marginBottom: 10 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center' },
+  ratingStars: { fontSize: 16, marginRight: 5 },
+  ratingText: { fontSize: 16, fontWeight: '700', color: '#333' },
+  infoCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  infoLabel: { fontSize: 14, color: '#666', fontWeight: '600' },
+  infoValue: { fontSize: 14, color: '#333', fontWeight: '600' },
+  priceValue: { fontSize: 16, color: '#4CAF50', fontWeight: '800' },
+  descriptionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  descriptionTitle: { fontSize: 16, fontWeight: '700', color: '#333', marginBottom: 10 },
+  description: { fontSize: 14, color: '#666', lineHeight: 20 },
+  reviewsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  reviewsTitle: { fontSize: 16, fontWeight: '700', color: '#333', marginBottom: 15 },
+  review: { marginBottom: 15, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   reviewName: { fontSize: 14, fontWeight: '600', color: '#333' },
-  reviewRating: { fontSize: 14, color: '#FF9800' },
-  reviewComment: { fontSize: 14, color: '#666', lineHeight: 20 },
-  bookButton: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#4CAF50', padding: 18, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 5 },
-  bookButtonText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  reviewRating: { fontSize: 13, fontWeight: '600', color: '#FF9800' },
+  reviewComment: { fontSize: 13, color: '#666', lineHeight: 18 },
+  contactButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 16,
+    padding: 18,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  contactButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

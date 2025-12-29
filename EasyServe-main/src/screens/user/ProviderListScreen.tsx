@@ -1,239 +1,283 @@
+// ============================================
+// screens/user/ProviderListScreen.tsx - FIXED
+// ============================================
+
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import FilterModal from '../../components/FilterModal';
-import ProviderCard from '../../components/ProviderCard';
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { providerService } from '../../services/providerService';
+import { logger } from '../../utils/logger';
+import { formatters } from '../../utils/formatter';
 import { Provider } from '../../types';
 
+const TAG = 'ProviderListScreen';
+const { width } = Dimensions.get('window');
+
 export default function ProviderListScreen({ route, navigation }: any) {
-    // ✅ Safe extraction with fallbacks
-    const categoryId = route.params?.categoryId;
-    const categoryName = route.params?.categoryName || 'Service Providers';
+  const { categoryId, categoryName } = route.params;
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    const [providers, setProviders] = useState<Provider[]>([]);
-    const [filteredProviders, setFilteredProviders] = useState<Provider[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [filterVisible, setFilterVisible] = useState(false);
+  useEffect(() => {
+    loadProviders();
+    return () => setProviders([]);
+  }, [categoryId]);
 
-    useEffect(() => {
-        const loadProviders = async () => {
-            // ✅ Early validation
-            if (!categoryId) {
-                console.error('❌ Category ID is missing!');
-                console.log('Route params received:', route.params);
-                setError('Category ID is missing. Please try again.');
-                setLoading(false);
-                return;
-            }
-
-            console.log('✅ Loading providers for categoryId:', categoryId);
-
-            try {
-                const data = await providerService.getByCategory(categoryId);
-                
-                console.log(`✅ Loaded ${data.length} providers`);
-                
-                // Debug: Check provider structure
-                if (data.length > 0) {
-                    console.log('First provider:', {
-                        _id: data[0]._id,
-                        id: data[0].id,
-                        name: data[0].name
-                    });
-                }
-
-                setProviders(data);
-                setFilteredProviders(data);
-                setError(null);
-            } catch (err: any) {
-                console.error('❌ Error loading providers:', err);
-                setError(err.message || 'Failed to load providers');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadProviders();
-    }, [categoryId]);
-
-    const handleFilter = (filters: { minPrice: number; maxPrice: number; area: string }) => {
-        let filtered = providers;
-
-        if (filters.area) {
-            filtered = filtered.filter(p => p.area === filters.area);
-        }
-
-        filtered = filtered.filter(p => p.price >= filters.minPrice && p.price <= filters.maxPrice);
-
-        setFilteredProviders(filtered);
-    };
-
-    const uniqueAreas = Array.from(new Set(providers.map(p => p.area)));
-
-    // ✅ Error state
-    if (error) {
-        return (
-            <View style={styles.errorContainer}>
-                <Text style={styles.errorIcon}>⚠️</Text>
-                <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity 
-                    style={styles.errorButton}
-                    onPress={() => navigation.goBack()}
-                >
-                    <Text style={styles.errorButtonText}>← Go Back</Text>
-                </TouchableOpacity>
-            </View>
-        );
+  const loadProviders = async () => {
+    if (!categoryId) {
+      setError('Category ID is missing');
+      setLoading(false);
+      return;
     }
 
+    try {
+      logger.info(TAG, `Loading providers for category: ${categoryId}`);
+      const data = await providerService.getByCategory(categoryId);
+      setProviders(data);
+      setError(null);
+      logger.info(TAG, `Loaded ${data.length} providers`);
+    } catch (err: any) {
+      logger.error(TAG, 'Error loading providers', err);
+      setError(err.message || 'Failed to load providers');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadProviders();
+  };
+
+  if (error) {
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Text style={styles.backButton}>← Back</Text>
-                </TouchableOpacity>
-                <Text style={styles.title}>{categoryName}</Text>
-                <TouchableOpacity onPress={() => setFilterVisible(true)}>
-                    <Text style={styles.filterButton}>🔍 Filter</Text>
-                </TouchableOpacity>
-            </View>
-
-            {loading ? (
-                <ActivityIndicator size="large" color="#4CAF50" style={styles.loader} />
-            ) : filteredProviders.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyIcon}>🔍</Text>
-                    <Text style={styles.emptyText}>No providers found</Text>
-                    <Text style={styles.emptySubtext}>
-                        Try adjusting your filters or check back later
-                    </Text>
-                </View>
-            ) : (
-                <FlatList
-                    data={filteredProviders}
-                    keyExtractor={(item, index) => 
-                        item._id?.toString() || item.id?.toString() || `prov-${index}`
-                    }
-                    renderItem={({ item }) => {
-                        // ✅ Extract the correct ID (MongoDB uses _id)
-                        const providerId = item._id?.toString() || item.id?.toString();
-
-                        console.log('Rendering Provider:', {
-                            name: item.name,
-                            providerId: providerId
-                        });
-
-                        return (
-                            <ProviderCard
-                                provider={item}
-                                onPress={() => {
-                                    if (!providerId) {
-                                        console.error('❌ Provider missing ID:', item);
-                                        alert('This provider cannot be opened (missing ID)');
-                                        return;
-                                    }
-                                    
-                                    console.log('🚀 Navigating to ProviderDetails with:', providerId);
-                                    navigation.navigate('ProviderDetails', { providerId });
-                                }}
-                            />
-                        );
-                    }}
-                    contentContainerStyle={styles.list}
-                />
-            )}
-
-            <FilterModal
-                visible={filterVisible}
-                onClose={() => setFilterVisible(false)}
-                onApply={handleFilter}
-                areas={uniqueAreas}
-            />
-        </View>
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorIcon}>⚠️</Text>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity
+          style={styles.errorButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.errorButtonText}>← Go Back</Text>
+        </TouchableOpacity>
+      </View>
     );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backButton}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>{categoryName}</Text>
+        <View style={{ width: 50 }} />
+      </View>
+
+      <View style={styles.actionBar}>
+        <TouchableOpacity
+          style={styles.requestButton}
+          onPress={() =>
+            navigation.navigate('ServiceRequest', {
+              category: {
+                _id: categoryId,
+                id: categoryId,
+                name: categoryName,
+              },
+            })
+          }
+        >
+          <Text style={styles.requestButtonIcon}>✨</Text>
+          <Text style={styles.requestButtonText}>Post a Request</Text>
+        </TouchableOpacity>
+      </View>
+
+      {loading ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#4CAF50" />
+        </View>
+      ) : providers.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyIcon}>👥</Text>
+          <Text style={styles.emptyText}>No providers available</Text>
+          <Text style={styles.emptySubtext}>
+            Post a request and get bids from providers
+          </Text>
+        </View>
+      ) : (
+        <>
+          <Text style={styles.sectionTitle}>Browse Providers</Text>
+          <FlatList
+            data={providers}
+            keyExtractor={(item, index) =>
+              item._id?.toString() || item.id?.toString() || `prov-${index}`
+            }
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#4CAF50']}
+              />
+            }
+            renderItem={({ item }) => {
+              const providerId = item._id?.toString() || item.id?.toString();
+
+              return (
+                <TouchableOpacity
+                  style={styles.providerCard}
+                  onPress={() => {
+                    if (!providerId) {
+                      Alert.alert('Error', 'Provider information unavailable');
+                      return;
+                    }
+                    navigation.navigate('ProviderDetails', {
+                      providerId,
+                    });
+                  }}
+                >
+                  <View style={styles.avatarContainer}>
+                    <Text style={styles.avatar}>👤</Text>
+                  </View>
+
+                  <View style={styles.providerInfo}>
+                    <Text style={styles.providerName}>{item.name}</Text>
+
+                    <View style={styles.ratingRow}>
+                      <Text style={styles.ratingStars}>⭐</Text>
+                      <Text style={styles.ratingText}>
+                        {formatters.rating(item.rating)}
+                      </Text>
+                      <Text style={styles.ratingCount}>
+                        ({(item.reviews?.length || 0)} reviews)
+                      </Text>
+                    </View>
+
+                    <View style={styles.locationRow}>
+                      <Text style={styles.locationIcon}>📍</Text>
+                      <Text style={styles.locationText}>{item.area}</Text>
+                    </View>
+
+                    {item.price && (
+                      <View style={styles.priceTag}>
+                        <Text style={styles.priceLabel}>Base:</Text>
+                        <Text style={styles.priceValue}>
+                          {formatters.currency(item.price)}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.arrowButton}>
+                    <Text style={styles.arrowIcon}>→</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            }}
+            contentContainerStyle={styles.list}
+          />
+        </>
+      )}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f5f5f5',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 20,
-        paddingTop: 50,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-    },
-    backButton: {
-        fontSize: 16,
-        color: '#4CAF50',
-    },
-    title: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#333',
-    },
-    filterButton: {
-        fontSize: 16,
-        color: '#2196F3',
-    },
-    loader: {
-        marginTop: 50,
-    },
-    errorContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 40,
-        backgroundColor: '#f5f5f5',
-    },
-    errorIcon: {
-        fontSize: 60,
-        marginBottom: 20,
-    },
-    errorText: {
-        fontSize: 18,
-        color: '#d32f2f',
-        textAlign: 'center',
-        marginBottom: 30,
-    },
-    errorButton: {
-        backgroundColor: '#4CAF50',
-        paddingHorizontal: 30,
-        paddingVertical: 12,
-        borderRadius: 10,
-    },
-    errorButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 40,
-    },
-    emptyIcon: {
-        fontSize: 60,
-        marginBottom: 20,
-    },
-    emptyText: {
-        fontSize: 18,
-        color: '#666',
-        marginBottom: 8,
-    },
-    emptySubtext: {
-        fontSize: 14,
-        color: '#999',
-        textAlign: 'center',
-    },
-    list: {
-        padding: 20,
-    },
+  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  backButton: { fontSize: 16, color: '#4CAF50', fontWeight: '600' },
+  title: { fontSize: 20, fontWeight: '800', color: '#333' },
+  actionBar: { padding: 20 },
+  requestButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 16,
+    padding: 18,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  requestButtonIcon: { fontSize: 20, marginRight: 8 },
+  requestButtonText: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#333', paddingHorizontal: 20, marginBottom: 15 },
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, backgroundColor: '#F8F9FA' },
+  errorIcon: { fontSize: 60, marginBottom: 20 },
+  errorText: { fontSize: 18, color: '#d32f2f', textAlign: 'center', marginBottom: 30 },
+  errorButton: { backgroundColor: '#4CAF50', paddingHorizontal: 30, paddingVertical: 12, borderRadius: 25 },
+  errorButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  emptyIcon: { fontSize: 80, marginBottom: 20 },
+  emptyText: { fontSize: 20, fontWeight: '700', color: '#333', marginBottom: 8 },
+  emptySubtext: { fontSize: 15, color: '#999', textAlign: 'center' },
+  list: { paddingHorizontal: 20, paddingBottom: 30 },
+  providerCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  avatarContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#F0F9FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  avatar: { fontSize: 36 },
+  providerInfo: { flex: 1 },
+  providerName: { fontSize: 17, fontWeight: '800', color: '#333', marginBottom: 6 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  ratingStars: { fontSize: 14, marginRight: 4 },
+  ratingText: { fontSize: 15, fontWeight: '700', color: '#333', marginRight: 4 },
+  ratingCount: { fontSize: 13, color: '#999' },
+  locationRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  locationIcon: { fontSize: 12, marginRight: 4 },
+  locationText: { fontSize: 13, color: '#666' },
+  priceTag: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  priceLabel: { fontSize: 12, color: '#666' },
+  priceValue: { fontSize: 15, fontWeight: '800', color: '#4CAF50' },
+  arrowButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  arrowIcon: { fontSize: 18, color: '#fff', fontWeight: '700' },
 });

@@ -1,54 +1,59 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
 
-// Auth Screens
+// Auth
 import LoginScreen from "../screens/auth/LoginScreen";
 import SignupScreen from "../screens/auth/SignupScreen";
+import SplashScreen from "../screens/SplashScreen";
 
-// User Screens
-import BookingScreen from "../screens/user/BookingScreen";
-import BookingSuccessScreen from "../screens/user/BookingSuccessScreen";
+// User
 import HomeScreen from "../screens/user/HomeScreen";
+import ServiceRequestScreen from "../screens/user/ServiceRequestScreen";
+import MyRequestsScreen from "../screens/user/MyRequestsScreen";
 import MyBookingsScreen from "../screens/user/MyBookingsScreen";
-import ProviderDetailsScreen from "../screens/user/ProviderDetailsScreen";
 import ProviderListScreen from "../screens/user/ProviderListScreen";
-
-// Admin Screens
-import AdminDashboardScreen from "../screens/admin/AdminDashboardScreen";
-import AdminLoginScreen from "../screens/admin/AdminLoginScreen";
-import ManageCategoriesScreen from "../screens/admin/ManageCategoriesScreen";
-import ManageProvidersScreen from "../screens/admin/ManageProvidersScreen";
-import ManageBookingScreen from "../screens/admin/ManageBookingScreen";
+import ProviderDetailsScreen from "../screens/user/ProviderDetailsScreen";
+import RequestDetailsScreen from "../screens/user/RequestDetailsScreen";
+import BookingDetailsScreen from '../screens/user/BookingDetailsScreen';
+// Provider
+import ProviderHomeScreen from "../screens/Provider/ProviderHomeScreen";
+import AvailableRequestsScreen from "../screens/Provider/AvailableRequestScreen";
+import MyBidsScreen from "../screens/Provider/MyBidsScreen";
+import WalletScreen from "../screens/Provider/WalletScreen";
+import ProfileScreen from "../screens/Provider/ProfileScreen";
 
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
-    return (
-        <Stack.Navigator
-            screenOptions={{
-                headerShown: false,
-                animation: "slide_from_right"
-            }}
-            initialRouteName="Login"
-        >
-            {/* AUTH SCREENS */}
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Signup" component={SignupScreen} />
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: "slide_from_right",
+      }}
+      initialRouteName="Splash"
+    >
+      {/* Auth */}
+      <Stack.Screen name="Splash" component={SplashScreen} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Signup" component={SignupScreen} />
 
-            {/* USER SCREENS */}
-            <Stack.Screen name="Home" component={HomeScreen} />
-            <Stack.Screen name="ProviderList" component={ProviderListScreen} />
-            <Stack.Screen name="ProviderDetails" component={ProviderDetailsScreen} />
-            <Stack.Screen name="Booking" component={BookingScreen} />
-            <Stack.Screen name="BookingSuccess" component={BookingSuccessScreen} />
-            <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
+      {/* User */}
+      <Stack.Screen name="Home" component={HomeScreen} />
 
-            {/* ADMIN SCREENS */}
-            <Stack.Screen name="AdminLogin" component={AdminLoginScreen} />
-            <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
-            <Stack.Screen name="ManageCategories" component={ManageCategoriesScreen} />
-            <Stack.Screen name="ManageProviders" component={ManageProvidersScreen} />
-            <Stack.Screen name="ManageBookings" component={ManageBookingScreen} />
-        </Stack.Navigator>
-    );
+      <Stack.Screen name="ProviderList" component={ProviderListScreen} />
+      <Stack.Screen name="ProviderDetails" component={ProviderDetailsScreen} />
+      <Stack.Screen name="ServiceRequest" component={ServiceRequestScreen} />
+      <Stack.Screen name="MyRequests" component={MyRequestsScreen} />
+      <Stack.Screen name="RequestDetails" component={RequestDetailsScreen} />
+      <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
+ <Stack.Screen name="BookingDetails" component={BookingDetailsScreen} />
+      {/* Provider */}
+      <Stack.Screen name="ProviderHome" component={ProviderHomeScreen} />
+      <Stack.Screen name="AvailableRequests" component={AvailableRequestsScreen} />
+      <Stack.Screen name="MyBids" component={MyBidsScreen} />
+      <Stack.Screen name="Wallet" component={WalletScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+    </Stack.Navigator>
+  );
 }
