@@ -24,30 +24,24 @@ export default function WalletScreen({ navigation }: any) {
   const [withdrawAmount, setWithdrawAmount] = useState('');
 
   useEffect(() => {
-    loadData();
-    return () => {
-      setWallet(null);
-      setTransactions([]);
-    };
+    loadWallet();
+    return () => setWallet(null);
   }, []);
 
-  const loadData = async () => {
+  const loadWallet = async () => {
+    setLoading(true);
     try {
-      const [walletData, transactionsData] = await Promise.all([
-        paymentService.getWallet(),
-        paymentService.getTransactions(),
-      ]);
+      const walletData = await paymentService.getWallet();
       setWallet(walletData);
-      setTransactions(
-        (transactionsData || []).sort(
-          (a: Transaction, b: Transaction) =>
-            new Date(b.createdAt || '').getTime() -
-            new Date(a.createdAt || '').getTime()
-        )
+
+      const sortedTx = (walletData.transactions || []).sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-      logger.info(TAG, 'Wallet data loaded');
+      setTransactions(sortedTx);
+
+      logger.info(TAG, 'Wallet loaded successfully');
     } catch (error) {
-      logger.error(TAG, 'Error loading wallet', error);
+      logger.error(TAG, 'Failed to load wallet', error);
       Alert.alert('Error', 'Failed to load wallet data');
     } finally {
       setLoading(false);
@@ -78,15 +72,30 @@ export default function WalletScreen({ navigation }: any) {
           onPress: async () => {
             setLoading(true);
             try {
+              // Call backend withdrawal API (optional)
               await paymentService.withdraw(amount);
-              logger.info(TAG, `Withdrawal of ${amount} successful`);
-              Alert.alert('Success', 'Withdrawal request submitted');
+
+              // Update wallet locally
+              const updatedWallet = { ...wallet };
+              updatedWallet.balance -= amount;
+              updatedWallet.transactions = [
+                {
+                  type: 'debit',
+                  amount,
+                  reference: 'withdrawal',
+                  status: 'withdrawn',
+                  createdAt: new Date().toISOString(),
+                },
+                ...(updatedWallet.transactions || []),
+              ];
+
+              setWallet(updatedWallet);
+              setTransactions(updatedWallet.transactions);
               setWithdrawAmount('');
-              loadData();
-            } catch (error: any) {
-              logger.error(TAG, 'Withdrawal failed', error);
-              const msg = error.response?.data?.message || 'Withdrawal failed';
-              Alert.alert('Error', msg);
+              Alert.alert('Success', `Withdrawn ${formatters.currency(amount)}`);
+            } catch (err: any) {
+              logger.error(TAG, 'Withdrawal failed', err);
+              Alert.alert('Error', err.message || 'Withdrawal failed');
             } finally {
               setLoading(false);
             }
@@ -106,6 +115,7 @@ export default function WalletScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backButton}>← Back</Text>
@@ -114,28 +124,24 @@ export default function WalletScreen({ navigation }: any) {
         <View style={{ width: 50 }} />
       </View>
 
+      {/* Wallet Card */}
       <View style={styles.walletCard}>
         <Text style={styles.balanceLabel}>Available Balance</Text>
-        <Text style={styles.balanceAmount}>
-          {formatters.currency(wallet?.balance || 0)}
-        </Text>
+        <Text style={styles.balanceAmount}>{formatters.currency(wallet?.balance || 0)}</Text>
 
         <View style={styles.stats}>
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>Held</Text>
-            <Text style={styles.statValue}>
-              {formatters.currency(wallet?.heldBalance || 0)}
-            </Text>
+            <Text style={styles.statValue}>{formatters.currency(wallet?.heldBalance || 0)}</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>Total Earned</Text>
-            <Text style={styles.statValue}>
-              {formatters.currency(wallet?.totalEarned || 0)}
-            </Text>
+            <Text style={styles.statValue}>{formatters.currency(wallet?.totalEarned || 0)}</Text>
           </View>
         </View>
       </View>
 
+      {/* Withdraw Section */}
       <View style={styles.withdrawSection}>
         <Text style={styles.sectionTitle}>Withdraw Funds</Text>
         <TextInput
@@ -152,31 +158,24 @@ export default function WalletScreen({ navigation }: any) {
           onPress={handleWithdraw}
           disabled={loading}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.withdrawButtonText}>Withdraw</Text>
-          )}
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.withdrawButtonText}>Withdraw</Text>}
         </TouchableOpacity>
       </View>
 
+      {/* Transactions */}
       <Text style={styles.sectionTitle}>Transaction History</Text>
       <FlatList
         data={transactions}
-        keyExtractor={(item) => item._id || `tx-${Math.random()}`}
+        keyExtractor={(item, index) => item._id || `tx-${index}`}
         renderItem={({ item }) => (
           <View style={styles.transactionCard}>
             <View>
-              <Text style={styles.transactionAmount}>
-                {formatters.currency(item.amount)}
-              </Text>
+              <Text style={styles.transactionAmount}>{formatters.currency(item.amount)}</Text>
               <Text style={styles.transactionStatus}>
                 {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
               </Text>
             </View>
-            <Text style={styles.transactionDate}>
-              {formatters.date(item.createdAt || '')}
-            </Text>
+            <Text style={styles.transactionDate}>{formatters.date(item.createdAt || '')}</Text>
           </View>
         )}
         contentContainerStyle={styles.transactionsList}
@@ -230,12 +229,7 @@ const styles = StyleSheet.create({
     color: '#333',
     backgroundColor: '#F8F9FA',
   },
-  withdrawButton: {
-    backgroundColor: '#4CAF50',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
+  withdrawButton: { backgroundColor: '#4CAF50', padding: 15, borderRadius: 10, alignItems: 'center' },
   buttonDisabled: { opacity: 0.6 },
   withdrawButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   transactionsList: { padding: 20, paddingTop: 0 },

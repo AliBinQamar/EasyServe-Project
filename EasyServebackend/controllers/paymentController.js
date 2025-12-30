@@ -95,68 +95,37 @@ const markServiceCompleted = async (req, res) => {
 };
 
 // STEP 3: User confirms service completion and releases payment
-const confirmAndRelease = async (req, res) => {
+const releasePayment = async (req, res) => {
   try {
-    const { bookingId, rating, review } = req.body;
-    const userId = req.user.id;
+    const { bookingId } = req.body;
 
     const booking = await Booking.findById(bookingId);
-    if (!booking) {
-      return res.status(404).json({ message: "Booking not found ❌" });
-    }
+    if (!booking) return res.status(404).json({ message: 'Booking not found ❌' });
 
-    if (booking.userId !== userId) {
-      return res.status(403).json({ message: "Unauthorized ❌" });
-    }
-
-    if (!booking.completedByProvider) {
-      return res.status(400).json({ message: "Provider hasn't completed service yet ❌" });
-    }
-
-    // Update booking
-    booking.completedByUser = true;
-    booking.completedAt = new Date();
-    booking.userRating = rating;
-    booking.userReview = review;
+    const providerWallet = await Wallet.findOne({ userId: booking.providerId });
+    if (!providerWallet) return res.status(404).json({ message: 'Provider wallet not found ❌' });
+    booking.status = 'payment-released';
     await booking.save();
+    // Update wallet
+    providerWallet.balance += booking.agreedPrice;
+    providerWallet.totalEarned += booking.agreedPrice;
 
-    // Release payment
-    const transaction = await Transaction.findById(booking.transactionId);
-    if (transaction) {
-      transaction.status = 'completed';
-      transaction.releasedAt = new Date();
-      await transaction.save();
-
-      // Move money from held to available in provider's wallet
-      const providerWallet = await Wallet.findOne({ userId: booking.providerId });
-      if (providerWallet) {
-        providerWallet.heldBalance -= transaction.providerAmount;
-        providerWallet.balance += transaction.providerAmount;
-        providerWallet.totalEarned += transaction.providerAmount;
-        providerWallet.updatedAt = new Date();
-        await providerWallet.save();
-      }
-
-      // Update user's wallet
-      let userWallet = await Wallet.findOne({ userId: booking.userId });
-      if (!userWallet) {
-        userWallet = new Wallet({
-          userId: booking.userId,
-          userType: 'user',
-        });
-      }
-      userWallet.totalSpent += transaction.amount;
-      await userWallet.save();
-    }
-
-    res.json({
-      message: "Payment released to provider ✅",
-      booking,
-      transaction,
+    // Add transaction record
+    providerWallet.transactions = providerWallet.transactions || [];
+    providerWallet.transactions.push({
+      type: 'credit',
+      amount: booking.agreedPrice,
+      reference: bookingId,
+      status: 'completed',
+      createdAt: new Date(),
     });
-  } catch (error) {
-    console.error("Release Error:", error);
-    res.status(500).json({ message: "Error releasing payment ❌", error: error.message });
+
+    await providerWallet.save();
+
+    res.json({ message: 'Payment released ✅', wallet: providerWallet });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error ❌', error: err.message });
   }
 };
 
@@ -291,7 +260,7 @@ const addBankDetails = async (req, res) => {
 module.exports = {
   initiatePayment,
   markServiceCompleted,
-  confirmAndRelease,
+  releasePayment,
   getTransactionHistory,
   getWallet,
   withdrawMoney,

@@ -15,6 +15,15 @@ const WalletSchema = new mongoose.Schema({
     bankName: String,
     iban: String,
   },
+    transactions: [
+    {
+      type: { type: String, enum: ['credit','debit'], required: true },
+      amount: { type: Number, required: true },
+      reference: { type: String }, // bookingId or withdrawalId
+      status: { type: String }, // e.g., 'released', 'held', 'withdrawn'
+      createdAt: { type: Date, default: Date.now },
+    }
+  ],
   
   lastWithdrawal: { type: Date },
   

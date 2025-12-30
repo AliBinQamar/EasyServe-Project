@@ -21,7 +21,8 @@ import AvailableRequestsScreen from "../screens/Provider/AvailableRequestScreen"
 import MyBidsScreen from "../screens/Provider/MyBidsScreen";
 import WalletScreen from "../screens/Provider/WalletScreen";
 import ProfileScreen from "../screens/Provider/ProfileScreen";
-
+import ProviderBookingScreen from "../screens/Provider/ProviderBookingScreen";
+//import ProviderBookingDetailsScreen from "../screens/Provider/BookingDetailsScreen";
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
@@ -53,7 +54,8 @@ export default function AppNavigator() {
       <Stack.Screen name="AvailableRequests" component={AvailableRequestsScreen} />
       <Stack.Screen name="MyBids" component={MyBidsScreen} />
       <Stack.Screen name="Wallet" component={WalletScreen} />
-            <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="ProviderBookings" component={ProviderBookingScreen}/>
     </Stack.Navigator>
   );
 }

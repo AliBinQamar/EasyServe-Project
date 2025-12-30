@@ -1,8 +1,3 @@
-// ============================================
-// screens/user/BookingDetailsScreen.tsx - NEW
-// Communication between user and provider after bid accepted
-// ============================================
-
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,115 +10,79 @@ import {
   View,
 } from 'react-native';
 import api from '../../config/api';
-import { logger } from '../../utils/logger';
-import { formatters } from '../../utils/formatter';
-import { Booking } from '../../types';
 
-const TAG = 'BookingDetailsScreen';
-
-interface BookingDetails extends Booking {
-  providerPhone?: string;
-  providerEmail?: string;
-}
-
-export default function BookingDetailsScreen({ route, navigation }: any) {
+export default function UserBookingDetailsScreen({ route, navigation }: any) {
   const { bookingId } = route.params;
-  const [booking, setBooking] = useState<BookingDetails | null>(null);
+  const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
-  const [sendingMessage, setSendingMessage] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [review, setReview] = useState('');
 
   useEffect(() => {
-    loadBookingDetails();
-    const interval = setInterval(loadBookingDetails, 5000); // Poll every 5 seconds
-    return () => {
-      clearInterval(interval);
-      setBooking(null);
-      setMessages([]);
-    };
+    loadBooking();
+    const interval = setInterval(loadBooking, 5000);
+    return () => clearInterval(interval);
   }, []);
 
-  const loadBookingDetails = async () => {
+  const loadBooking = async () => {
     try {
-      logger.info(TAG, `Loading booking: ${bookingId}`);
-
       const res = await api.get(`/bookings/${bookingId}`);
       setBooking(res.data);
 
-      // Load messages
-      try {
-        const messagesRes = await api.get(`/bookings/${bookingId}/messages`);
-        setMessages(messagesRes.data || []);
-      } catch (error) {
-        logger.warn(TAG, 'Messages endpoint not ready yet', error);
-      }
+      const msgRes = await api.get(`/bookings/${bookingId}/messages`);
+      setMessages(msgRes.data || []);
     } catch (error) {
-      logger.error(TAG, 'Error loading booking', error);
+      console.error('Load error:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSendMessage = async () => {
-    if (!message.trim()) {
-      Alert.alert('Error', 'Message cannot be empty');
+    if (!message.trim()) return;
+
+    try {
+      await api.post(`/bookings/${bookingId}/messages`, { message });
+      setMessage('');
+      loadBooking();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to send message');
+    }
+  };
+
+  const handlePayNow = () => {
+    navigation.navigate('Payment', {
+      bookingId: booking._id,
+      amount: booking.agreedPrice,
+    });
+  };
+
+  const handleConfirmCompletion = async () => {
+    if (rating === 0) {
+      Alert.alert('Rating Required', 'Please rate the service (1-5 stars)');
       return;
     }
 
-    setSendingMessage(true);
-    try {
-      await api.post(`/bookings/${bookingId}/messages`, {
-        message: message.trim(),
-      });
-
-      logger.info(TAG, 'Message sent');
-      setMessage('');
-      loadBookingDetails();
-    } catch (error) {
-      logger.error(TAG, 'Error sending message', error);
-      Alert.alert('Error', 'Failed to send message');
-    } finally {
-      setSendingMessage(false);
-    }
-  };
-
-  const handleContactProvider = () => {
-    if (booking?.providerPhone) {
-      Alert.alert(
-        'Contact Provider',
-        `Call ${booking.providerPhone}?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Call',
-            onPress: () => {
-              logger.info(TAG, 'Initiating call');
-              // In real app, use: Linking.openURL(`tel:${booking.providerPhone}`);
-              Alert.alert('Call', `Calling ${booking.providerPhone}...`);
-            },
-          },
-        ]
-      );
-    }
-  };
-
-  const handleCompleteService = () => {
     Alert.alert(
-      'Complete Service',
-      'Mark this service as completed?',
+      'Confirm Completion',
+      'This will release payment to the provider. Are you sure?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Complete',
+          text: 'Confirm',
           onPress: async () => {
             try {
-              await api.put(`/bookings/${bookingId}`, { status: 'completed' });
-              Alert.alert('Success', 'Service marked as completed');
-              loadBookingDetails();
-            } catch (error) {
-              logger.error(TAG, 'Error completing service', error);
-              Alert.alert('Error', 'Failed to complete service');
+              await api.post(`/bookings/${bookingId}/user-confirm`, {
+                rating,
+                review,
+              });
+              await api.post(`/bookings/${bookingId}/confirm-release`);
+              Alert.alert('Success', 'Service completed and payment released!');
+              loadBooking();
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.message || 'Failed to confirm');
             }
           },
         },
@@ -131,9 +90,11 @@ export default function BookingDetailsScreen({ route, navigation }: any) {
     );
   };
 
+  
+
   if (loading) {
     return (
-      <View style={styles.loaderContainer}>
+      <View style={styles.loader}>
         <ActivityIndicator size="large" color="#4CAF50" />
       </View>
     );
@@ -141,268 +102,255 @@ export default function BookingDetailsScreen({ route, navigation }: any) {
 
   if (!booking) {
     return (
-      <View style={styles.errorContainer}>
+      <View style={styles.error}>
         <Text style={styles.errorText}>Booking not found</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.retryButtonText}>← Go Back</Text>
-        </TouchableOpacity>
       </View>
     );
   }
+
+  const getStatusInfo = () => {
+    const statusConfig: any = {
+      'pending-payment': {
+        color: '#FF9800',
+        icon: '💳',
+        message: 'Please complete payment to confirm booking',
+        actions: ['pay', 'cancel'],
+      },
+      'confirmed': {
+        color: '#4CAF50',
+        icon: '✅',
+        message: 'Waiting for provider to start service',
+        actions: ['message', 'cancel'],
+      },
+      'in-progress': {
+        color: '#2196F3',
+        icon: '🔨',
+        message: booking.completedByProvider 
+          ? 'Provider completed. Please confirm to release payment' 
+          : 'Service in progress',
+        actions: booking.completedByProvider 
+          ? ['complete', 'dispute', 'message'] 
+          : ['message', 'dispute'],
+      },
+      'completed': {
+        color: '#4CAF50',
+        icon: '🎉',
+        message: 'Service completed successfully!',
+        actions: ['message'],
+      },
+      'cancelled': {
+        color: '#F44336',
+        icon: '❌',
+        message: `Cancelled by ${booking.cancelledBy}`,
+        actions: [],
+      },
+      'disputed': {
+        color: '#FF5722',
+        icon: '⚠️',
+        message: 'Dispute under review',
+        actions: ['message'],
+      },
+    };
+    return statusConfig[booking.status] || statusConfig['confirmed'];
+  };
+
+  const statusInfo = getStatusInfo();
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Back</Text>
+          <Text style={styles.backBtn}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Booking Details</Text>
+        <Text style={styles.title}>Booking #{bookingId.slice(-6)}</Text>
         <View style={{ width: 50 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* ✅ Provider Info Card */}
-        <View style={styles.providerCard}>
-          <View style={styles.providerHeader}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>👤</Text>
-            </View>
-            <View style={styles.providerInfo}>
-              <Text style={styles.providerName}>{booking.providerName}</Text>
-              <Text style={styles.providerPhone}>{booking.providerPhone || 'Phone not provided'}</Text>
-            </View>
-          </View>
-
-          <View style={styles.contactButtons}>
-            <TouchableOpacity
-              style={styles.contactButton}
-              onPress={handleContactProvider}
-              disabled={!booking.providerPhone}
-            >
-              <Text style={styles.contactIcon}>📞</Text>
-              <Text style={styles.contactText}>Call</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.contactButton}>
-              <Text style={styles.contactIcon}>💬</Text>
-              <Text style={styles.contactText}>Message</Text>
-            </TouchableOpacity>
+      <ScrollView style={styles.scroll}>
+        {/* Status Banner */}
+        <View style={[styles.statusBanner, { backgroundColor: statusInfo.color }]}>
+          <Text style={styles.statusIcon}>{statusInfo.icon}</Text>
+          <View style={styles.statusInfo}>
+            <Text style={styles.statusTitle}>{booking.status.toUpperCase()}</Text>
+            <Text style={styles.statusMessage}>{statusInfo.message}</Text>
           </View>
         </View>
 
-        {/* Service Details */}
-        <View style={styles.detailsCard}>
-          <Text style={styles.cardTitle}>Service Details</Text>
-          
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Amount:</Text>
-            <Text style={styles.detailValue}>{formatters.currency(booking.agreedPrice)}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Status:</Text>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
-              <Text style={styles.statusText}>{booking.status}</Text>
+        {/* Provider Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Provider Details</Text>
+          <View style={styles.providerRow}>
+            <Text style={styles.avatar}>👤</Text>
+            <View style={styles.providerInfo}>
+              <Text style={styles.providerName}>{booking.providerName}</Text>
+              <Text style={styles.providerContact}>{booking.providerPhone || 'No phone'}</Text>
             </View>
           </View>
+        </View>
 
-          {booking.createdAt && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Booked on:</Text>
-              <Text style={styles.detailValue}>{formatters.date(booking.createdAt)}</Text>
+        {/* Booking Details */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Booking Details</Text>
+          <View style={styles.row}>
+            <Text style={styles.label}>Amount:</Text>
+            <Text style={styles.value}>Rs. {booking.agreedPrice}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Created:</Text>
+            <Text style={styles.value}>{new Date(booking.createdAt).toLocaleDateString()}</Text>
+          </View>
+          {booking.isPaid && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Payment:</Text>
+              <Text style={[styles.value, { color: '#4CAF50' }]}>✓ Paid (In Escrow)</Text>
             </View>
           )}
         </View>
 
-        {/* ✅ Communication Section */}
-        {booking.status === 'in-progress' || booking.status === 'confirmed' ? (
-          <>
-            <View style={styles.messagesCard}>
-              <Text style={styles.cardTitle}>Messages</Text>
-
-              {messages.length === 0 ? (
-                <Text style={styles.noMessagesText}>No messages yet. Send one to get started!</Text>
-              ) : (
-                messages.map((msg, idx) => (
-                  <View key={idx} style={[styles.message, msg.senderRole === 'user' && styles.userMessage]}>
-                    <Text style={styles.messageText}>{msg.text}</Text>
-                    <Text style={styles.messageTime}>{formatters.time(msg.createdAt)}</Text>
-                  </View>
-                ))
-              )}
-
-              <View style={styles.messageInput}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Send a message..."
-                  value={message}
-                  onChangeText={setMessage}
-                  multiline
-                  numberOfLines={3}
-                  placeholderTextColor="#999"
-                  editable={!sendingMessage}
-                />
-                <TouchableOpacity
-                  style={[styles.sendButton, sendingMessage && styles.buttonDisabled]}
-                  onPress={handleSendMessage}
-                  disabled={sendingMessage}
+        {/* Messages */}
+        {(booking.status === 'confirmed' || booking.status === 'in-progress' || booking.status === 'completed') && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Messages</Text>
+            {messages.length === 0 ? (
+              <Text style={styles.noMessages}>No messages yet</Text>
+            ) : (
+              messages.map((msg, idx) => (
+                <View
+                  key={idx}
+                  style={[
+                    styles.messageBox,
+                    msg.senderRole === 'user' && styles.myMessage,
+                  ]}
                 >
-                  <Text style={styles.sendIcon}>{sendingMessage ? '⏳' : '➤'}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Complete Service Button */}
-            {booking.status === 'in-progress' && (
-              <TouchableOpacity
-                style={styles.completeButton}
-                onPress={handleCompleteService}
-              >
-                <Text style={styles.completeButtonText}>Mark Service Complete</Text>
-              </TouchableOpacity>
+                  <Text style={styles.messageText}>{msg.text}</Text>
+                  <Text style={styles.messageTime}>
+                    {new Date(msg.createdAt).toLocaleTimeString()}
+                  </Text>
+                </View>
+              ))
             )}
-          </>
-        ) : (
-          <View style={styles.infoBox}>
-            <Text style={styles.infoIcon}>ℹ️</Text>
-            <Text style={styles.infoText}>
-              Once the provider accepts, you'll be able to communicate and track progress here.
-            </Text>
+
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.input}
+                placeholder="Type message..."
+                value={message}
+                onChangeText={setMessage}
+                multiline
+              />
+              <TouchableOpacity style={styles.sendBtn} onPress={handleSendMessage}>
+                <Text style={styles.sendIcon}>➤</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
+
+        {/* Rating & Review (for completion) */}
+        {booking.status === 'in-progress' && booking.completedByProvider && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Rate & Review</Text>
+            
+            <View style={styles.starRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity key={star} onPress={() => setRating(star)}>
+                  <Text style={styles.star}>{star <= rating ? '⭐' : '☆'}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TextInput
+              style={styles.reviewInput}
+              placeholder="Write your review (optional)"
+              value={review}
+              onChangeText={setReview}
+              multiline
+              numberOfLines={4}
+            />
+          </View>
+        )}
+
+        {/* Action Buttons */}
+        <View style={styles.actions}>
+          {statusInfo.actions.includes('pay') && (
+            <TouchableOpacity style={styles.primaryBtn} onPress={handlePayNow}>
+              <Text style={styles.primaryBtnText}>Pay Now Rs. {booking.agreedPrice}</Text>
+            </TouchableOpacity>
+          )}
+
+          {statusInfo.actions.includes('complete') && (
+            <TouchableOpacity style={styles.primaryBtn} onPress={handleConfirmCompletion}>
+              <Text style={styles.primaryBtnText}>Confirm Completion & Release Payment</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </ScrollView>
     </View>
   );
 }
 
-const getStatusColor = (status: string): string => {
-  const colors: Record<string, string> = {
-    confirmed: '#4CAF50',
-    'in-progress': '#FF9800',
-    completed: '#4CAF50',
-    cancelled: '#F44336',
-    disputed: '#FF5722',
-  };
-  return colors[status] || '#999';
-};
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    padding: 20,
     paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#eee',
   },
-  backButton: { fontSize: 16, color: '#4CAF50', fontWeight: '600' },
-  title: { fontSize: 20, fontWeight: '800', color: '#333' },
-  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  errorText: { color: '#999', fontSize: 16, marginBottom: 20 },
-  retryButton: { backgroundColor: '#4CAF50', paddingHorizontal: 30, paddingVertical: 12, borderRadius: 10 },
-  retryButtonText: { color: '#fff', fontWeight: '600' },
-  content: { padding: 20 },
-  providerCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  providerHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#F0F9FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  avatarText: { fontSize: 30 },
-  providerInfo: { flex: 1 },
-  providerName: { fontSize: 18, fontWeight: '800', color: '#333', marginBottom: 4 },
-  providerPhone: { fontSize: 14, color: '#666' },
-  contactButtons: { flexDirection: 'row', gap: 10 },
-  contactButton: {
-    flex: 1,
+  backBtn: { color: '#4CAF50', fontSize: 16, fontWeight: '600' },
+  title: { fontSize: 18, fontWeight: '700', color: '#333' },
+  loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  error: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorText: { fontSize: 16, color: '#999' },
+  scroll: { flex: 1 },
+  statusBanner: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F0F9FF',
-    borderRadius: 12,
-    padding: 12,
-    gap: 6,
-  },
-  contactIcon: { fontSize: 18 },
-  contactText: { fontSize: 14, fontWeight: '600', color: '#2196F3' },
-  detailsCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
     padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    margin: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  statusIcon: { fontSize: 30, marginRight: 15 },
+  statusInfo: { flex: 1 },
+  statusTitle: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  statusMessage: { color: '#fff', fontSize: 14 },
+  card: {
+    backgroundColor: '#fff',
+    margin: 15,
+    marginTop: 0,
+    padding: 20,
+    borderRadius: 12,
   },
   cardTitle: { fontSize: 16, fontWeight: '700', color: '#333', marginBottom: 15 },
-  detailRow: {
+  providerRow: { flexDirection: 'row', alignItems: 'center' },
+  avatar: { fontSize: 40, marginRight: 15 },
+  providerInfo: { flex: 1 },
+  providerName: { fontSize: 16, fontWeight: '700', color: '#333', marginBottom: 4 },
+  providerContact: { fontSize: 14, color: '#666' },
+  row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingBottom: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
-  detailLabel: { fontSize: 14, color: '#666', fontWeight: '600' },
-  detailValue: { fontSize: 14, color: '#333', fontWeight: '600' },
-  statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-  statusText: { fontSize: 12, fontWeight: '700', color: '#fff', textTransform: 'uppercase' },
-  messagesCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  noMessagesText: { fontSize: 14, color: '#999', textAlign: 'center', marginVertical: 20 },
-  message: {
+  label: { fontSize: 14, color: '#666', fontWeight: '600' },
+  value: { fontSize: 14, color: '#333', fontWeight: '600' },
+  noMessages: { textAlign: 'center', color: '#999', paddingVertical: 20 },
+  messageBox: {
     backgroundColor: '#f0f0f0',
-    borderRadius: 12,
     padding: 12,
+    borderRadius: 12,
     marginBottom: 10,
-    alignSelf: 'flex-start',
     maxWidth: '80%',
   },
-  userMessage: { backgroundColor: '#4CAF50', alignSelf: 'flex-end' },
-  messageText: { fontSize: 14, color: '#333' },
-  messageTime: { fontSize: 11, color: '#999', marginTop: 4 },
-  messageInput: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 15,
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
+  myMessage: { backgroundColor: '#4CAF50', alignSelf: 'flex-end' },
+  messageText: { fontSize: 14, color: '#333', marginBottom: 4 },
+  messageTime: { fontSize: 11, color: '#999' },
+  inputRow: { flexDirection: 'row', marginTop: 15, gap: 10 },
   input: {
     flex: 1,
     borderWidth: 1,
@@ -410,34 +358,38 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     fontSize: 14,
-    color: '#333',
-    backgroundColor: '#F8F9FA',
   },
-  sendButton: {
+  sendBtn: {
     width: 44,
     height: 44,
-    borderRadius: 22,
     backgroundColor: '#4CAF50',
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  buttonDisabled: { opacity: 0.6 },
-  sendIcon: { fontSize: 18 },
-  completeButton: {
-    backgroundColor: '#4CAF50',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  completeButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  infoBox: {
-    flexDirection: 'row',
-    backgroundColor: '#E3F2FD',
+  sendIcon: { color: '#fff', fontSize: 18 },
+  starRow: { flexDirection: 'row', justifyContent: 'center', marginVertical: 15 },
+  star: { fontSize: 36, marginHorizontal: 5 },
+  reviewInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
     borderRadius: 12,
-    padding: 15,
-    marginBottom: 20,
+    padding: 12,
+    fontSize: 14,
+    minHeight: 100,
+    textAlignVertical: 'top',
   },
-  infoIcon: { fontSize: 20, marginRight: 10 },
-  infoText: { flex: 1, fontSize: 14, color: '#1976D2', lineHeight: 20 },
+  actions: { padding: 15, gap: 10 },
+  primaryBtn: { backgroundColor: '#4CAF50', padding: 16, borderRadius: 12, alignItems: 'center' },
+  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  dangerBtn: { backgroundColor: '#F44336', padding: 16, borderRadius: 12, alignItems: 'center' },
+  dangerBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  outlineBtn: {
+    borderWidth: 2,
+    borderColor: '#666',
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  outlineBtnText: { color: '#666', fontSize: 16, fontWeight: '600' },
 });

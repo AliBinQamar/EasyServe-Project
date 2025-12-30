@@ -147,7 +147,20 @@ export default function ProviderHomeScreen({ navigation }: any) {
           </View>
           <Text style={styles.menuArrow}>→</Text>
         </TouchableOpacity>
-
+        {/* ✅ New Menu Item for Provider Bookings */}
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('ProviderBookings')}
+        >
+          <View style={styles.menuIconContainer}>
+            <Text style={styles.menuIcon}>📂</Text>
+          </View>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>My Bookings</Text>
+            <Text style={styles.menuSubtitle}>View accepted jobs & track progress</Text>
+          </View>
+          <Text style={styles.menuArrow}>→</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => navigation.navigate('Wallet')}

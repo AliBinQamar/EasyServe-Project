@@ -1,3 +1,4 @@
+
 const express = require("express");
 const { 
   getBookings, 
@@ -5,7 +6,10 @@ const {
   updateBookingStatus,
   getBookingById,
   getBookingMessages,   // ← Import
-  sendBookingMessage,   // ← Import
+  sendBookingMessage,  
+  startService,
+  providerCompleteService,
+  userConfirmBooking, // ← Import
 } = require("../controllers/bookingController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -19,4 +23,9 @@ router.put("/:id/status", updateBookingStatus); // UPDATE booking status
 router.get("/:id", getBookingById);  
 router.get("/:id/messages", getBookingMessages);      // ← Add GET messages
 router.post("/:id/messages", sendBookingMessage); 
+router.post("/:id/start", startService);              // Provider starts
+router.post("/:id/provider-complete", providerCompleteService); // Provider completes
+router.post('/:id/user-confirm', userConfirmBooking);
+router.post("/:bookingId/confirm-release", userConfirmBooking);
+
 module.exports = router;

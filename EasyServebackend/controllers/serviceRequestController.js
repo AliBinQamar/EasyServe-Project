@@ -2,6 +2,7 @@ const ServiceRequest = require("../models/ServiceRequest");
 const Bid = require("../models/Bid");
 const User = require("../models/user");
 const Booking = require("../models/booking"); // ← ADD THIS IMPORT
+const Provider = require("../models/Provider");
 // GET all service requests
 const getServiceRequests = async (req, res) => {
   try {
@@ -174,80 +175,58 @@ const placeBid = async (req, res) => {
 // serviceRequestController.js
 
 
+// ==========================
+// PROVIDER ACCEPTS BID
+// ==========================
 const acceptBid = async (req, res) => {
   try {
     const { bidId } = req.body;
+    if (!bidId) return res.status(400).json({ message: "Missing bidId" });
 
     const bid = await Bid.findById(bidId);
-    if (!bid) {
-      return res.status(404).json({ message: "Bid not found" });
-    }
+    if (!bid) return res.status(404).json({ message: "Bid not found" });
 
-    const serviceRequest = await ServiceRequest.findById(bid.serviceRequestId);
-    if (!serviceRequest) {
-      return res.status(404).json({ message: "Service request not found" });
-    }
+    const request = await ServiceRequest.findById(bid.serviceRequestId);
+    if (!request) return res.status(404).json({ message: "Service request not found" });
 
-    // Check if booking already exists
-    const existingBooking = await Booking.findOne({ bidId: bid._id });
-    if (existingBooking) {
-      return res.status(400).json({ 
-        message: "Booking already exists for this bid",
-        booking: existingBooking 
-      });
-    }
+    if (request.status === "assigned")
+      return res.status(400).json({ message: "Request already assigned" });
 
-    // Update service request
-    serviceRequest.assignedProviderId = bid.providerId;
-    serviceRequest.assignedProviderName = bid.providerName;
-    serviceRequest.acceptedBidId = bid._id;
-    serviceRequest.finalAmount = bid.proposedAmount;
-    serviceRequest.status = 'assigned';
-    await serviceRequest.save();
+    const provider = await Provider.findById(bid.providerId);
+    if (!provider) return res.status(404).json({ message: "Provider not found" });
 
-    // Update bid status
-    bid.status = 'accepted';
-    await bid.save();
+    // Update request
+    request.assignedProviderId = provider._id;
+    request.assignedProviderName = provider.name;
+    request.status = "assigned";
+    request.finalAmount = bid.proposedAmount;
+    await request.save();
 
-    // Reject other bids
-    await Bid.updateMany(
-      {
-        serviceRequestId: serviceRequest._id,
-        _id: { $ne: bid._id }
-      },
-      { status: 'rejected' }
-    );
-
-    // ✅ CREATE BOOKING
+    // Create booking
     const booking = new Booking({
-      requestId: serviceRequest._id,
+      requestId: request._id,
       bidId: bid._id,
-      userId: serviceRequest.userId,
-      userName: serviceRequest.userName,
-      providerId: bid.providerId,
-      providerName: bid.providerName,
-           providerPhone: provider?.phone || null,      // ← ADD
-      providerEmail: provider?.email || null,
+      userId: request.userId,
+      userName: request.userName,
+      providerId: provider._id,
+      providerName: provider.name,
       agreedPrice: bid.proposedAmount,
-      status: 'confirmed',
+      status: "confirmed",
     });
     await booking.save();
 
-    console.log("✅ Booking created:", booking._id);
-
     res.json({
       message: "Bid accepted and booking created successfully",
-      serviceRequest,
-      booking
+      request,
+      booking,
     });
   } catch (error) {
-    console.error("Accept bid error:", error);
-    res.status(500).json({
-      message: "Error accepting bid",
-      error: error.message
-    });
+    console.error("Accept Bid Error:", error);
+    res.status(500).json({ message: "Error accepting bid", error: error.message });
   }
 };
+
+
 // GET provider's bids
 const getProviderBids = async (req, res) => {
   try {

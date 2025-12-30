@@ -62,6 +62,15 @@ export interface Bid {
   updatedAt?: string;
 }
 
+export interface Transaction {
+  _id?: string;
+  type: 'credit' | 'debit';
+  amount: number;
+  reference: string;
+  status: 'pending' | 'completed' | 'withdrawn' | 'released';
+  createdAt: string;
+}
+
 export interface Wallet {
   _id?: string;
   userId: string;
@@ -70,18 +79,18 @@ export interface Wallet {
   heldBalance?: number;
   totalEarned?: number;
   totalSpent?: number;
+  transactions?: Transaction[]; // <--- added this
   createdAt?: string;
+  updatedAt?: string;
+  bankDetails?: {
+    accountName?: string;
+    accountNumber?: string;
+    bankName?: string;
+    iban?: string;
+  };
+  lastWithdrawal?: string;
 }
 
-export interface Transaction {
-  _id?: string;
-  userId: string;
-  providerId?: string;
-  amount: number;
-  type: 'payment' | 'withdrawal' | 'refund';
-  status: 'pending' | 'completed' | 'failed';
-  createdAt?: string;
-}
 
 
 // ✅ SERVICE REQUEST INTERFACE

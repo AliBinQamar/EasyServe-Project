@@ -8,6 +8,8 @@ const BidSchema = new mongoose.Schema({
   },
   providerId: { type: String, required: true },
   providerName: { type: String, required: true },
+  providerPhone:{type:String,required:false},
+providerEmail:{type:String,required:false},
   proposedAmount: { type: Number, required: true },
   note: { type: String },
   estimatedTime: { type: String },

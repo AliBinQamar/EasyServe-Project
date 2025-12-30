@@ -20,7 +20,6 @@ const getBookings = async (req, res) => {
     res.status(500).json({ message: "Error fetching bookings ❌", error: error.message });
   }
 };
-
 // CREATE booking (after bid is accepted)
 const createBooking = async (req, res) => {
   try {
@@ -186,6 +185,58 @@ const sendBookingMessage = async (req, res) => {
     });
   }
 };
+// Provider starts the service
+const startService = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findById(id);
+    if (!booking) return res.status(404).json({ message: "Booking not found ❌" });
+
+    booking.status = "in-progress";
+    await booking.save();
+
+    res.json({ message: "Service started ✅", booking });
+  } catch (error) {
+    res.status(500).json({ message: "Error starting service ❌", error: error.message });
+  }
+};
+
+// Provider marks service as completed
+const providerCompleteService = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findById(id);
+    if (!booking) return res.status(404).json({ message: "Booking not found ❌" });
+
+    booking.completedByProvider = true;
+    await booking.save();
+
+    res.json({ message: "Service marked completed ✅", booking });
+  } catch (error) {
+    res.status(500).json({ message: "Error completing service ❌", error: error.message });
+  }
+};
+const userConfirmBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rating, review } = req.body;
+
+    const booking = await Booking.findById(id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    // mark as completed by user
+    booking.completedByUser = true;
+    booking.userRating = rating;
+    booking.userReview = review;
+    booking.status = 'payment-released'; // update status if provider also completed
+    await booking.save();
+
+    res.json({ message: 'Booking confirmed by user ✅', booking });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 
 
 module.exports = {
@@ -195,4 +246,7 @@ module.exports = {
   getBookingById,
     getBookingMessages,  // ← Export
   sendBookingMessage,
+  startService,
+  providerCompleteService,
+  userConfirmBooking,
 };

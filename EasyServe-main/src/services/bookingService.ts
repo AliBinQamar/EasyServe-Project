@@ -19,5 +19,18 @@ export const bookingService = {
   async updateStatus(id: string, status: 'pending' | 'confirmed' | 'rejected') {
     const res = await api.put(`/bookings/${id}/status`, { status });
     return res.data.booking;
-  }
+  },
+  async startService(bookingId: string) {
+    const res = await api.post(`/bookings/${bookingId}/start`);
+    return res.data;
+  },
+
+  async providerCompleteService(bookingId: string) {
+    const res = await api.post(`/bookings/${bookingId}/provider-complete`);
+    return res.data;
+  },
+   async getByProviderId(providerId: string) {
+    const res = await api.get('/bookings', { params: { providerId } });
+    return res.data;
+  },
 };

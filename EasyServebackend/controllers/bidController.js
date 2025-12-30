@@ -1,5 +1,5 @@
 const Bid = require("../models/Bid");
-
+const Provider = require("../models/Provider");
 // Provider submits a bid
 exports.createBid = async (req, res) => {
   try {

@@ -2,7 +2,7 @@ const express = require("express");
 const {
   initiatePayment,
   markServiceCompleted,
-  confirmAndRelease,
+  releasePayment,
   getTransactionHistory,
   getWallet,
   withdrawMoney,
@@ -17,7 +17,8 @@ router.use(protect);
 // ✅ CONSISTENT /payments/ PREFIX
 router.post("/initiate", initiatePayment);
 router.post("/mark-completed", markServiceCompleted);
-router.post("/confirm-release", confirmAndRelease);
+router.post("/:bookingId/confirm-release", releasePayment);
+
 router.get("/transactions", getTransactionHistory);
 router.get("/wallet", getWallet);
 router.post("/withdraw", withdrawMoney);
