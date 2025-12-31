@@ -6,8 +6,6 @@ const {
   getTransactionHistory,
   getWallet,
   withdrawMoney,
-  raiseDispute,
-  addBankDetails
 } = require("../controllers/paymentController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -22,6 +20,6 @@ router.post("/:bookingId/confirm-release", releasePayment);
 router.get("/transactions", getTransactionHistory);
 router.get("/wallet", getWallet);
 router.post("/withdraw", withdrawMoney);
-router.post("/dispute", raiseDispute);
-router.post("/bank-details", addBankDetails);
+// router.post("/dispute", raiseDispute);
+// router.post("/bank-details", addBankDetails);
 module.exports = router;

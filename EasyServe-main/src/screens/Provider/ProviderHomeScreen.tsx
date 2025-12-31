@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { authService } from '../../services/authService';
 import api from '../../config/api';
@@ -35,33 +36,42 @@ export default function ProviderHomeScreen({ navigation }: any) {
     loadData();
   }, []);
 
-  const loadData = async () => {
-    try {
-      const user = (await authService.getCurrentUser()) as ProviderType;
-      if (user) {
-        setUserName(user.name.split(' ')[0]);
-        setStats((prev) => ({ ...prev, rating: user.rating || 0 }));
+const loadData = async () => {
+  try {
+    const user = (await authService.getCurrentUser()) as ProviderType;
+    if (user) {
+      setUserName(user.name.split(' ')[0]);
 
-        logger.info(TAG, `Loaded provider: ${user.name}`);
+      logger.info(TAG, `Loaded provider: ${user.name}`);
 
-        const bidsRes = await api.get(
-          `/service-requests/provider-bids/${user.id}`
-        );
+      // ✅ Fetch provider stats from bookings
+      const statsRes = await api.get(`/bookings/provider/${user.id}/stats`);
+      const providerStats = statsRes.data;
 
-        const activeBids = (bidsRes.data || []).filter(
-          (b: any) => b.status === 'pending'
-        ).length;
-        const acceptedBids = (bidsRes.data || []).filter(
-          (b: any) => b.status === 'accepted'
-        ).length;
+      // Fetch bids
+      const bidsRes = await api.get(`/service-requests/provider-bids/${user.id}`);
 
-        setStats((prev) => ({ ...prev, activeBids, acceptedBids }));
-        logger.info(TAG, `Stats: ${activeBids} active, ${acceptedBids} accepted`);
-      }
-    } catch (error) {
-      logger.error(TAG, 'Error loading data', error);
+      const activeBids = (bidsRes.data || []).filter(
+        (b: any) => b.status === 'pending'
+      ).length;
+      const acceptedBids = (bidsRes.data || []).filter(
+        (b: any) => b.status === 'accepted'
+      ).length;
+
+      // ✅ Update stats with real data
+      setStats({
+        activeBids,
+        acceptedBids,
+        completedJobs: providerStats.completedJobs || 0,
+        rating: providerStats.averageRating || 0,
+      });
+
+      logger.info(TAG, `Stats loaded - Rating: ${providerStats.averageRating}, Completed: ${providerStats.completedJobs}`);
     }
-  };
+  } catch (error) {
+    logger.error(TAG, 'Error loading data', error);
+  }
+};
 
   const handleLogout = async () => {
     Alert.alert(
@@ -196,7 +206,7 @@ export default function ProviderHomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA' },
   header: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#4CAF50',
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 20,

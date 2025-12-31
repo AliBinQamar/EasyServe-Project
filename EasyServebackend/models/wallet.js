@@ -4,23 +4,17 @@ const WalletSchema = new mongoose.Schema({
   userId: { type: String, required: true, unique: true },
   userType: { type: String, enum: ['user', 'provider'], required: true },
   
-  balance: { type: Number, default: 0 }, // Available balance
-  heldBalance: { type: Number, default: 0 }, // Money in escrow
-  totalEarned: { type: Number, default: 0 }, // Lifetime earnings (providers)
-  totalSpent: { type: Number, default: 0 }, // Lifetime spending (users)
+  balance: { type: Number, default: 0 },
+  heldBalance: { type: Number, default: 0 },
+  totalEarned: { type: Number, default: 0 },
+  totalSpent: { type: Number, default: 0 },
   
-  bankDetails: {
-    accountName: String,
-    accountNumber: String,
-    bankName: String,
-    iban: String,
-  },
-    transactions: [
+  transactions: [
     {
-      type: { type: String, enum: ['credit','debit'], required: true },
+      type: { type: String, enum: ['credit', 'debit'], required: true }, // ✅ Added type back
       amount: { type: Number, required: true },
-      reference: { type: String }, // bookingId or withdrawalId
-      status: { type: String }, // e.g., 'released', 'held', 'withdrawn'
+      reference: { type: String },
+      status: { type: String },
       createdAt: { type: Date, default: Date.now },
     }
   ],

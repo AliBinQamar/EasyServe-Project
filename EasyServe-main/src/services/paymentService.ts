@@ -30,13 +30,13 @@ export const paymentService = {
   },
 
   // Add bank details
-  async addBankDetails(details: {
-    accountName: string;
-    accountNumber: string;
-    bankName: string;
-    iban?: string;
-  }) {
-    const res = await api.post('/payments/bank-details', details);
-    return res.data;
-  }
+  // async addBankDetails(details: {
+  //   accountName: string;
+  //   accountNumber: string;
+  //   bankName: string;
+  //   iban?: string;
+  // }) {
+  //   const res = await api.post('/payments/bank-details', details);
+  //   return res.data;
+  // }
 };

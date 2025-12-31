@@ -35,7 +35,7 @@ const initiatePayment = async (req, res) => {
 
     await transaction.save();
 
-    // TODO: Integrate with actual payment gateway (Stripe/JazzCash/Easypaisa)
+
     // For now, simulate payment success
     transaction.status = 'held';
     transaction.paidAt = new Date();
@@ -168,10 +168,16 @@ const getWallet = async (req, res) => {
 };
 
 // Provider withdraws money
+// Provider withdraws money (SIMPLIFIED - No bank details required)
 const withdrawMoney = async (req, res) => {
   try {
     const { amount } = req.body;
     const providerId = req.user.id;
+
+    // Validate amount
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Invalid amount ❌" });
+    }
 
     const wallet = await Wallet.findOne({ userId: providerId });
     if (!wallet) {
@@ -182,78 +188,31 @@ const withdrawMoney = async (req, res) => {
       return res.status(400).json({ message: "Insufficient balance ❌" });
     }
 
-    if (!wallet.bankDetails || !wallet.bankDetails.accountNumber) {
-      return res.status(400).json({ message: "Please add bank details first ❌" });
-    }
-
-    // TODO: Integrate with actual bank transfer API
-    // For now, simulate withdrawal
+    // ✅ Deduct amount from balance
     wallet.balance -= amount;
     wallet.lastWithdrawal = new Date();
+
+    // ✅ Add withdrawal transaction
+    wallet.transactions = wallet.transactions || [];
+    wallet.transactions.push({
+      type: 'debit',
+      amount: amount,
+      reference: 'Withdrawal',
+      status: 'withdrawn',
+      createdAt: new Date(),
+    });
+
     await wallet.save();
 
     res.json({
       message: "Withdrawal successful ✅",
       amount,
       newBalance: wallet.balance,
+      wallet
     });
   } catch (error) {
+    console.error('Withdrawal error:', error);
     res.status(500).json({ message: "Withdrawal failed ❌", error: error.message });
-  }
-};
-
-// Raise dispute
-const raiseDispute = async (req, res) => {
-  try {
-    const { bookingId, reason } = req.body;
-    const userId = req.user.id;
-
-    const booking = await Booking.findById(bookingId);
-    if (!booking) {
-      return res.status(404).json({ message: "Booking not found ❌" });
-    }
-
-    booking.status = 'disputed';
-    await booking.save();
-
-    const transaction = await Transaction.findById(booking.transactionId);
-    if (transaction) {
-      transaction.status = 'disputed';
-      transaction.disputeReason = reason;
-      await transaction.save();
-    }
-
-    res.json({ message: "Dispute raised. Admin will review ✅", booking });
-  } catch (error) {
-    res.status(500).json({ message: "Error raising dispute ❌", error: error.message });
-  }
-};
-const addBankDetails = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { accountName, accountNumber, bankName, iban } = req.body;
-
-    let wallet = await Wallet.findOne({ userId });
-    if (!wallet) {
-      wallet = new Wallet({
-        userId,
-        userType: req.user.role,
-      });
-    }
-
-    wallet.bankDetails = {
-      accountName,
-      accountNumber,
-      bankName,
-      iban,
-    };
-
-    wallet.updatedAt = new Date();
-    await wallet.save();
-
-    res.json({ message: "Bank details saved ✅", wallet });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to save bank details ❌" });
   }
 };
 
@@ -264,6 +223,4 @@ module.exports = {
   getTransactionHistory,
   getWallet,
   withdrawMoney,
-  raiseDispute,
-  addBankDetails,
 };

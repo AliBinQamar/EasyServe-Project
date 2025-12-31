@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 const getBaseURL = () => {
   if (Platform.OS === 'android') {
     // For Android Emulator
-    return 'http://192.168.100.6:5000/api';
+    return 'http://192.168.0.107:5000/api';
   }
   else if (Platform.OS === 'ios') {
     // For iOS Simulator

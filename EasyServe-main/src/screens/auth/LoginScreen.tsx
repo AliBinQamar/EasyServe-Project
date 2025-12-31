@@ -12,6 +12,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+    TouchableWithoutFeedback,
+    Keyboard,
 } from 'react-native';
 import { authService } from '../../services/authService';
 import { validators } from '../../utils/validators';
@@ -77,6 +79,7 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
     <View style={styles.container}>
       <View style={styles.topSection}>
         <View style={styles.logoContainer}>
@@ -171,7 +174,9 @@ export default function LoginScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
     </View>
+    </TouchableWithoutFeedback>
   );
+  
 }
 
 const styles = StyleSheet.create({

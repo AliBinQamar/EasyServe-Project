@@ -3,11 +3,16 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { paymentService } from '../../services/paymentService';
 import { validators } from '../../utils/validators';
@@ -72,10 +77,8 @@ export default function WalletScreen({ navigation }: any) {
           onPress: async () => {
             setLoading(true);
             try {
-              // Call backend withdrawal API (optional)
               await paymentService.withdraw(amount);
 
-              // Update wallet locally
               const updatedWallet = { ...wallet };
               updatedWallet.balance -= amount;
               updatedWallet.transactions = [
@@ -114,80 +117,135 @@ export default function WalletScreen({ navigation }: any) {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>My Wallet</Text>
-        <View style={{ width: 50 }} />
-      </View>
-
-      {/* Wallet Card */}
-      <View style={styles.walletCard}>
-        <Text style={styles.balanceLabel}>Available Balance</Text>
-        <Text style={styles.balanceAmount}>{formatters.currency(wallet?.balance || 0)}</Text>
-
-        <View style={styles.stats}>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Held</Text>
-            <Text style={styles.statValue}>{formatters.currency(wallet?.heldBalance || 0)}</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Total Earned</Text>
-            <Text style={styles.statValue}>{formatters.currency(wallet?.totalEarned || 0)}</Text>
-          </View>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.backButton}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>My Wallet</Text>
+          <View style={{ width: 50 }} />
         </View>
-      </View>
 
-      {/* Withdraw Section */}
-      <View style={styles.withdrawSection}>
-        <Text style={styles.sectionTitle}>Withdraw Funds</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter amount"
-          value={withdrawAmount}
-          onChangeText={setWithdrawAmount}
-          keyboardType="numeric"
-          placeholderTextColor="#999"
-          editable={!loading}
-        />
-        <TouchableOpacity
-          style={[styles.withdrawButton, loading && styles.buttonDisabled]}
-          onPress={handleWithdraw}
-          disabled={loading}
+        {/* Scrollable Content */}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
         >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.withdrawButtonText}>Withdraw</Text>}
-        </TouchableOpacity>
-      </View>
-
-      {/* Transactions */}
-      <Text style={styles.sectionTitle}>Transaction History</Text>
-      <FlatList
-        data={transactions}
-        keyExtractor={(item, index) => item._id || `tx-${index}`}
-        renderItem={({ item }) => (
-          <View style={styles.transactionCard}>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View>
-              <Text style={styles.transactionAmount}>{formatters.currency(item.amount)}</Text>
-              <Text style={styles.transactionStatus}>
-                {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-              </Text>
+              {/* Wallet Card */}
+              <View style={styles.walletCard}>
+                <Text style={styles.balanceLabel}>Available Balance</Text>
+                <Text style={styles.balanceAmount}>
+                  {formatters.currency(wallet?.balance || 0)}
+                </Text>
+
+                <View style={styles.stats}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statLabel}>Held</Text>
+                    <Text style={styles.statValue}>
+                      {formatters.currency(wallet?.heldBalance || 0)}
+                    </Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statLabel}>Total Earned</Text>
+                    <Text style={styles.statValue}>
+                      {formatters.currency(wallet?.totalEarned || 0)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Withdraw Section */}
+              <View style={styles.withdrawSection}>
+                <Text style={styles.sectionTitle}>Withdraw Funds</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter amount"
+                  value={withdrawAmount}
+                  onChangeText={setWithdrawAmount}
+                  keyboardType="numeric"
+                  placeholderTextColor="#999"
+                  editable={!loading}
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
+                />
+                <TouchableOpacity
+                  style={[styles.withdrawButton, loading && styles.buttonDisabled]}
+                  onPress={handleWithdraw}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.withdrawButtonText}>Withdraw</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Transactions */}
+              <Text style={styles.sectionTitle}>Transaction History</Text>
+              
+              {transactions.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyText}>No transactions yet</Text>
+                </View>
+              ) : (
+                transactions.map((item, index) => (
+                  <View key={item._id || `tx-${index}`} style={styles.transactionCard}>
+                    <View style={styles.transactionLeft}>
+                      <Text style={styles.transactionIcon}>
+                        {item.type === 'credit' ? '💰' : '🏦'}
+                      </Text>
+                      <View>
+                        <Text
+                          style={[
+                            styles.transactionAmount,
+                            item.type === 'debit' && styles.debitAmount,
+                          ]}
+                        >
+                          {item.type === 'debit' ? '-' : '+'}{' '}
+                          {formatters.currency(item.amount)}
+                        </Text>
+                        <Text style={styles.transactionReference}>
+                          {item.reference || 'Transaction'}
+                        </Text>
+                        <Text style={styles.transactionStatus}>
+                          {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.transactionDate}>
+                      {formatters.date(item.createdAt || '')}
+                    </Text>
+                  </View>
+                ))
+              )}
+
+              {/* Bottom Padding */}
+              <View style={{ height: 20 }} />
             </View>
-            <Text style={styles.transactionDate}>{formatters.date(item.createdAt || '')}</Text>
-          </View>
-        )}
-        contentContainerStyle={styles.transactionsList}
-        scrollEnabled={false}
-      />
-    </View>
+          </TouchableWithoutFeedback>
+        </ScrollView>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  scrollContent: {
+    flexGrow: 1,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -218,7 +276,13 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12, color: '#fff', opacity: 0.8, marginBottom: 4 },
   statValue: { fontSize: 16, fontWeight: '600', color: '#fff' },
   withdrawSection: { backgroundColor: '#fff', margin: 20, padding: 20, borderRadius: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#333', marginBottom: 15, paddingHorizontal: 20 },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 15,
+    paddingHorizontal: 20,
+  },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -232,16 +296,52 @@ const styles = StyleSheet.create({
   withdrawButton: { backgroundColor: '#4CAF50', padding: 15, borderRadius: 10, alignItems: 'center' },
   buttonDisabled: { opacity: 0.6 },
   withdrawButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  transactionsList: { padding: 20, paddingTop: 0 },
   transactionCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     backgroundColor: '#fff',
     padding: 15,
     borderRadius: 12,
     marginBottom: 10,
+    marginHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  transactionAmount: { fontSize: 16, fontWeight: '700', color: '#333', marginBottom: 4 },
-  transactionStatus: { fontSize: 14, color: '#666' },
-  transactionDate: { fontSize: 14, color: '#999' },
+  transactionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  transactionIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  transactionAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#4CAF50',
+    marginBottom: 4,
+  },
+  debitAmount: {
+    color: '#F44336',
+  },
+  transactionReference: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 2,
+  },
+  transactionStatus: { fontSize: 12, color: '#999' },
+  transactionDate: { fontSize: 12, color: '#999', textAlign: 'right' },
+  emptyState: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+  },
 });

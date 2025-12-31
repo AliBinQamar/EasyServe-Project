@@ -12,6 +12,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  TouchableWithoutFeedback,
+    Keyboard,
+
 } from 'react-native';
 import { authService } from '../../services/authService';
 import { categoryService } from '../../services/categoryService';
@@ -161,6 +164,7 @@ export default function SignupScreen({ navigation }: any) {
   };
 
   return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Create Account</Text>
@@ -318,6 +322,7 @@ export default function SignupScreen({ navigation }: any) {
         </TouchableOpacity>
       </ScrollView>
     </View>
+    </TouchableWithoutFeedback>
   );
 }
 

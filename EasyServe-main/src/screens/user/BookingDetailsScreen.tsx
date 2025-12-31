@@ -82,7 +82,7 @@ export default function UserBookingDetailsScreen({ route, navigation }: any) {
                 rating,
                 review,
               });
-              await api.post(`/bookings/${bookingId}/confirm-release`);
+              //await api.post(`/bookings/${bookingId}/confirm-release`);
               Alert.alert('Success', 'Service completed and payment released!');
               loadBooking();
               navigation.goBack(); // Go back to bookings list

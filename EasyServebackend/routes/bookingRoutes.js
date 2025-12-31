@@ -9,7 +9,8 @@ const {
   sendBookingMessage,
   startService,
   providerCompleteService,
-  userConfirmBooking, // ← Import
+  userConfirmBooking, 
+  getProviderStats// ← Import
 } = require("../controllers/bookingController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -30,5 +31,5 @@ router.post("/:id/provider-complete", providerCompleteService); // Provider comp
 
 // ⭐ Single unified route for confirm & release
 router.post("/:id/confirm-release", userConfirmBooking);
-
+router.get('/provider/:providerId/stats', getProviderStats);
 module.exports = router;

@@ -301,6 +301,46 @@ const userConfirmBooking = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+// GET provider rating and stats
+const getProviderStats = async (req, res) => {
+  try {
+    const { providerId } = req.params;
+
+    // Get all completed bookings for this provider with ratings
+    const bookings = await Booking.find({
+      providerId,
+      status: { $in: ['payment-released', 'completed'] },
+      userRating: { $exists: true, $ne: null }
+    });
+
+    const totalBookings = bookings.length;
+    const completedJobs = bookings.length;
+    
+    // Calculate average rating
+    let averageRating = 0;
+    if (totalBookings > 0) {
+      const totalRating = bookings.reduce((sum, booking) => sum + booking.userRating, 0);
+      averageRating = totalRating / totalBookings;
+    }
+
+    res.json({
+      completedJobs,
+      averageRating: parseFloat(averageRating.toFixed(1)),
+      totalReviews: totalBookings,
+      recentReviews: bookings.slice(-5).map(b => ({
+        rating: b.userRating,
+        review: b.userReview,
+        date: b.completedAt || b.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('Get provider stats error:', error);
+    res.status(500).json({
+      message: 'Error fetching provider stats ❌',
+      error: error.message
+    });
+  }
+};
 
 module.exports = {
   getBookings,
@@ -312,4 +352,5 @@ module.exports = {
   startService,
   providerCompleteService,
   userConfirmBooking,
+  getProviderStats,
 };
