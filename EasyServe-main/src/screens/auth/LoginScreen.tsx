@@ -189,7 +189,6 @@ export default function LoginScreen({ navigation }: any) {
                 ) : (
                   <>
                     <Text style={styles.loginButtonText}>Sign In</Text>
-                    <Text style={styles.loginButtonIcon}>→</Text>
                   </>
                 )}
               </TouchableOpacity>
