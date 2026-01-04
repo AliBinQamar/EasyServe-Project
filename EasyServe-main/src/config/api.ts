@@ -2,31 +2,8 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// ⚠️ CHANGE THIS BASED ON YOUR SETUP
-const getBaseURL = () => {
-  if (Platform.OS === 'android') {
-    // For Android Emulator
-    return 'http://192.168.0.107:5000/api';
-  }
-  else if (Platform.OS === 'ios') {
-    // For iOS Simulator
-    return 'http://localhost:5000/api';
-  }
-  else {
-    // For web
-    return 'http://localhost:5000/api';
-  }
-};
-
-// 🔥 FOR PHYSICAL DEVICE (VERY IMPORTANT!)
-// Find your computer's IP address and use it:
-// Windows: Run `ipconfig` in cmd, look for "IPv4 Address"
-// Mac/Linux: Run `ifconfig` or `ip addr`, look for "inet"
-// Example: export const API_BASE_URL = 'http://192.168.1.5:5000/api';
-
-export const API_BASE_URL = getBaseURL();
-// 👆 OR manually set: export const API_BASE_URL = 'http://YOUR_IP:5000/api';
-
+// export const API_BASE_URL = 'https://easyserveproject-priv.onrender.com/api';
+export const API_BASE_URL = 'http://192.168.0.105:5000/api';
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {

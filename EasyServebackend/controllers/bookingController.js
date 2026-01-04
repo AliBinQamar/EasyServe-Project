@@ -3,7 +3,7 @@ const Booking = require("../models/booking");
 // GET bookings (user or provider)
 const getBookings = async (req, res) => {
   try {
-    const { userId, providerId, status } = req.query;
+    const { userId, providerId, status, bidId } = req.query;
     const filter = {};
 
     if (userId) filter.userId = userId;

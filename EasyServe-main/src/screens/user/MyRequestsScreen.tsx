@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable } from 'react-native';
 import {
   ActivityIndicator,
   FlatList,
@@ -61,13 +63,9 @@ export default function MyRequestsScreen({ navigation }: any) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backButton}>← Back</Text>
-        </TouchableOpacity>
+          <Pressable onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={26} color="#000" />
+          </Pressable>
 
         <Text style={styles.title}>My Requests</Text>
 

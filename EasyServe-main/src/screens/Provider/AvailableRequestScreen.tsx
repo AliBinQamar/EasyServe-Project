@@ -3,6 +3,8 @@
 // ============================================
 
 import React, { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable } from 'react-native';
 import {
   ActivityIndicator,
   Alert,
@@ -24,7 +26,7 @@ import api from '../../config/api';
 import { Provider } from '../../types';
 import { logger } from '../../utils/logger';
 import { requestService } from '../../services/requestService';
-
+import { Image } from 'react-native';
 const TAG = 'AvailableRequestScreen';
 
 interface Request {
@@ -34,10 +36,12 @@ interface Request {
   categoryId: string;
   categoryName: string;
   description: string;
+  serviceAddress: string; 
   requestType: 'fixed' | 'bidding';
   fixedAmount?: number;
   status: 'open' | 'bidding' | 'assigned' | 'in-progress' | 'completed';
   createdAt: string;
+  images?: string[];
 }
 
 export default function AvailableRequestScreen({ navigation }: any) {
@@ -230,7 +234,7 @@ export default function AvailableRequestScreen({ navigation }: any) {
     const now = new Date().getTime();
     const created = new Date(createdAt).getTime();
     const diffInHours = Math.floor((now - created) / (1000 * 60 * 60));
-    
+
     if (diffInHours < 1) return 'Just now';
     if (diffInHours < 24) return `${diffInHours}h ago`;
     const diffInDays = Math.floor(diffInHours / 24);
@@ -241,9 +245,9 @@ export default function AvailableRequestScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Back</Text>
-        </TouchableOpacity>
+          <Pressable onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={26} color="#000" />
+          </Pressable>
         <Text style={styles.title}>Available Requests</Text>
         <View style={{ width: 50 }} />
       </View>
@@ -317,7 +321,26 @@ export default function AvailableRequestScreen({ navigation }: any) {
               <Text style={styles.description} numberOfLines={3}>
                 {item.description}
               </Text>
-
+              {/* Images Section - ADD THIS */}
+              {item.images && item.images.length > 0 && (
+                <View style={styles.imagesSection}>
+                  <Text style={styles.imagesLabel}>📷 Attached Photos ({item.images.length})</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.imagesScroll}
+                  >
+                    {item.images?.map((uri, idx) => (
+                      <Image
+                        key={idx}
+                        source={{ uri }}
+                        style={styles.requestImage}
+                        resizeMode="cover"
+                      />
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
               {item.fixedAmount && (
                 <View style={styles.budgetContainer}>
                   <View style={styles.budgetCard}>
@@ -334,7 +357,7 @@ export default function AvailableRequestScreen({ navigation }: any) {
                 <Text style={styles.actionButtonText}>
                   {item.requestType === 'bidding' ? '📝 Place Your Bid' : '✓ Accept Request'}
                 </Text>
-                <Text style={styles.actionArrow}>→</Text>
+                <Text style={styles.actionArrow}>➜</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -378,7 +401,7 @@ export default function AvailableRequestScreen({ navigation }: any) {
                           {getTimeDifference(selectedRequest.createdAt)}
                         </Text>
                       </View>
-                      
+
                       <View style={styles.previewClient}>
                         <View style={styles.previewAvatar}>
                           <Text style={styles.previewAvatarText}>
@@ -391,7 +414,14 @@ export default function AvailableRequestScreen({ navigation }: any) {
                       <Text style={styles.previewDescription}>
                         {selectedRequest.description}
                       </Text>
-
+                      {selectedRequest.serviceAddress && (
+                        <View style={styles.addressContainer}>
+                          <Text style={styles.addressIcon}>📍</Text>
+                          <Text style={styles.addressText}>
+                            {selectedRequest.serviceAddress}
+                          </Text>
+                        </View>
+                      )}
                       {selectedRequest.fixedAmount && (
                         <View style={styles.previewBudget}>
                           <Text style={styles.previewBudgetLabel}>Client Budget</Text>
@@ -436,42 +466,6 @@ export default function AvailableRequestScreen({ navigation }: any) {
                             placeholderTextColor="#999"
                             editable={!submitting}
                           />
-                        </View>
-
-                        <View style={styles.inputSection}>
-                          <Text style={styles.inputLabel}>Attachments (Optional)</Text>
-                          <TouchableOpacity
-                            style={[
-                              styles.imageButton,
-                              attachments.length >= 5 && styles.imageButtonDisabled,
-                            ]}
-                            onPress={pickImage}
-                            disabled={attachments.length >= 5 || submitting}
-                          >
-                            <Text style={styles.imageIcon}>📎</Text>
-                            <Text style={styles.imageText}>
-                              Add Photos ({attachments.length}/5)
-                            </Text>
-                          </TouchableOpacity>
-
-                          {attachments.length > 0 && (
-                            <View style={styles.attachmentsList}>
-                              {attachments.map((att, idx) => (
-                                <View key={idx} style={styles.attachment}>
-                                  <Text style={styles.attachmentIcon}>📷</Text>
-                                  <Text style={styles.attachmentName} numberOfLines={1}>
-                                    {att.name}
-                                  </Text>
-                                  <TouchableOpacity
-                                    onPress={() => removeAttachment(idx)}
-                                    disabled={submitting}
-                                  >
-                                    <Text style={styles.removeIcon}>✕</Text>
-                                  </TouchableOpacity>
-                                </View>
-                              ))}
-                            </View>
-                          )}
                         </View>
                       </>
                     ) : (
@@ -804,4 +798,46 @@ const styles = StyleSheet.create({
   },
   submitActionButtonDisabled: { opacity: 0.6 },
   submitActionText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  imagesSection: {
+    marginBottom: 15,
+  },
+  imagesLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 10,
+  },
+  imagesScroll: {
+    marginHorizontal: -18,
+    paddingHorizontal: 18,
+  },
+  imageContainer: {
+    marginRight: 10,
+  },
+  requestImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  addressContainer: {
+  flexDirection: 'row',
+  backgroundColor: '#FFF3E0',
+  padding: 12,
+  borderRadius: 10,
+  marginBottom: 12,
+  borderLeftWidth: 3,
+  borderLeftColor: '#FF9800',
+},
+addressIcon: {
+  fontSize: 16,
+  marginRight: 8,
+},
+addressText: {
+  flex: 1,
+  fontSize: 14,
+  color: '#333',
+  lineHeight: 20,
+},
 });

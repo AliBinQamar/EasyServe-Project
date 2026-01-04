@@ -1,6 +1,6 @@
-const ServiceRequest = require("../models/ServiceRequest");
+const ServiceRequest = require("../models/serviceRequest");
 const Booking = require("../models/booking"); // ← ADD THIS
-const Provider = require("../models/Provider");
+const Provider = require("../models/provider");
 
 // ==========================
 // PROVIDER ACCEPTS FIXED PRICE REQUEST
@@ -50,6 +50,7 @@ const acceptFixedRequest = async (req, res) => {
       userName: request.userName,
       providerId,
       providerName,
+      serviceAddress: request.serviceAddress, 
       // providerPhone: provider.phone || null,
       // providerEmail: provider.email || null,
       agreedPrice: request.fixedAmount,

@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable } from 'react-native';
 import {
   ActivityIndicator,
   Alert,
@@ -124,9 +126,9 @@ export default function WalletScreen({ navigation }: any) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backButton}>← Back</Text>
-          </TouchableOpacity>
+          <Pressable onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={26} color="#000" />
+          </Pressable>
           <Text style={styles.title}>My Wallet</Text>
           <View style={{ width: 50 }} />
         </View>

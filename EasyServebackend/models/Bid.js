@@ -15,12 +15,12 @@ providerEmail:{type:String,required:false},
   estimatedTime: { type: String },
   
   // NEW: Image attachments support
-  attachments: [{
-    uri: String,
-    type: { type: String, enum: ['image', 'video'] },
-    name: String,
-    size: Number,
-  }],
+  // attachments: [{
+  //   uri: String,
+  //   type: { type: String, enum: ['image', 'video'] },
+  //   name: String,
+  //   size: Number,
+  // }],
   
   status: {
     type: String,

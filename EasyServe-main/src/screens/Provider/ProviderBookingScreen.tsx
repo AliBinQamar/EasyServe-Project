@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable } from 'react-native';
 import {
   ActivityIndicator,
   Alert,
@@ -132,9 +134,9 @@ export default function ProviderBookingsScreen({ navigation }: any) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backButton}>← Back</Text>
-          </TouchableOpacity>
+          <Pressable onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={26} color="#000" />
+          </Pressable>
           <Text style={styles.title}>My Bookings</Text>
           <View style={{ width: 50 }} />
         </View>
@@ -274,7 +276,13 @@ export default function ProviderBookingsScreen({ navigation }: any) {
                       </Text>
                     </View>
                   )}
-
+                  {item.status === 'payment-released' && (
+                    <View style={styles.completedSuccessBadge}>
+                      <Text style={styles.completedSuccessText}>
+                        ✓ Service completed successfully! Payment received.
+                      </Text>
+                    </View>
+                  )}
                   {item.status === 'completed' && (
                     <View style={styles.completedBadge}>
                       <Text style={styles.completedText}>
@@ -455,4 +463,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   completedText: { color: '#4CAF50', fontSize: 13, fontWeight: '600' },
+  completedSuccessBadge: {
+  backgroundColor: '#F0FDF4',
+  padding: 14,
+  borderRadius: 10,
+  alignItems: 'center',
+  borderWidth: 1,
+  borderColor: '#4CAF50',
+},
+completedSuccessText: {
+  color: '#4CAF50',
+  fontSize: 14,
+  fontWeight: '700',
+},
 });

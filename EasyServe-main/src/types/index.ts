@@ -101,6 +101,7 @@ export interface ServiceRequest {
   categoryId: string;
   categoryName: string;
   description: string;
+  serviceAddress: string; 
   requestType: 'fixed' | 'bidding';
   fixedAmount?: number;
   biddingEndDate?: string;
@@ -124,8 +125,9 @@ export interface Booking {
   userName: string;
   providerId: string;
   providerName: string;
+  serviceAddress: string; 
   agreedPrice: number;
-  status: 'confirmed' | 'in-progress' | 'completed' | 'cancelled' | 'disputed';
+  status: 'confirmed' | 'in-progress' | 'completed' | 'cancelled' | 'payment-released';
   isPaid?: boolean; // ✅ ADDED
   transactionId?: string;
   completedByProvider?: boolean;

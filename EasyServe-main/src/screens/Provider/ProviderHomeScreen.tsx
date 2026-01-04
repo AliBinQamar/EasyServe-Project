@@ -179,7 +179,7 @@ export default function ProviderHomeScreen({ navigation }: any) {
               <Text style={styles.menuSubtitle}>Find new opportunities</Text>
             </View>
             <View style={styles.menuArrowContainer}>
-              <Text style={styles.menuArrow}>→</Text>
+              <Text style={styles.menuArrow}>➜</Text>
             </View>
           </TouchableOpacity>
 
@@ -195,7 +195,7 @@ export default function ProviderHomeScreen({ navigation }: any) {
               <Text style={styles.menuSubtitle}>Track your submitted bids</Text>
             </View>
             <View style={styles.menuArrowContainer}>
-              <Text style={styles.menuArrow}>→</Text>
+              <Text style={styles.menuArrow}>➜</Text>
             </View>
           </TouchableOpacity>
 
@@ -211,7 +211,7 @@ export default function ProviderHomeScreen({ navigation }: any) {
               <Text style={styles.menuSubtitle}>View accepted jobs & track progress</Text>
             </View>
             <View style={styles.menuArrowContainer}>
-              <Text style={styles.menuArrow}>→</Text>
+              <Text style={styles.menuArrow}>➜</Text>
             </View>
           </TouchableOpacity>
 
@@ -227,7 +227,7 @@ export default function ProviderHomeScreen({ navigation }: any) {
               <Text style={styles.menuSubtitle}>Manage your earnings</Text>
             </View>
             <View style={styles.menuArrowContainer}>
-              <Text style={styles.menuArrow}>→</Text>
+              <Text style={styles.menuArrow}>➜</Text>
             </View>
           </TouchableOpacity>
 
@@ -243,7 +243,7 @@ export default function ProviderHomeScreen({ navigation }: any) {
               <Text style={styles.menuSubtitle}>View & edit your profile</Text>
             </View>
             <View style={styles.menuArrowContainer}>
-              <Text style={styles.menuArrow}>→</Text>
+              <Text style={styles.menuArrow}>➜</Text>
             </View>
           </TouchableOpacity>
         </View>

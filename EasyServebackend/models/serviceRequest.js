@@ -7,7 +7,10 @@ const ServiceRequestSchema = new mongoose.Schema({
   categoryName: { type: String, required: true },
   description: { type: String, required: true },
   images: [{ type: String }],
-  
+    serviceAddress: { 
+    type: String, 
+    required: true 
+  },
   // Bidding system fields
   requestType: {
     type: String,

@@ -4,6 +4,8 @@
 // ============================================
 
 import React, { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable } from 'react-native';
 import {
   ActivityIndicator,
   FlatList,
@@ -26,7 +28,7 @@ const BOOKING_STATUS_COLORS: Record<Booking['status'], string> = {
   'in-progress': '#FF9800',
   completed: '#4CAF50',
   cancelled: '#F44336',
-  disputed: '#FF5722',
+  "payment-released": '#4CAF50',
 };
 
 const BOOKING_STATUS_ICONS: Record<Booking['status'], string> = {
@@ -34,7 +36,7 @@ const BOOKING_STATUS_ICONS: Record<Booking['status'], string> = {
   'in-progress': '⏳',
   completed: '✓',
   cancelled: '✕',
-  disputed: '⚠️',
+  "payment-released": '✔️',
 };
 
 export default function MyBookingsScreen({ navigation }: any) {
@@ -86,13 +88,9 @@ export default function MyBookingsScreen({ navigation }: any) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backButton}>← Back</Text>
-        </TouchableOpacity>
+          <Pressable onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={26} color="#000" />
+          </Pressable>
 
         <Text style={styles.title}>My Bookings</Text>
 
@@ -190,8 +188,32 @@ export default function MyBookingsScreen({ navigation }: any) {
                     <Text style={styles.paidText}>✓ Payment Confirmed</Text>
                   </View>
                 )}
-
-                {item.status === 'completed' &&
+                {item.status === 'completed' || item.status === 'payment-released' ? (
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: '#4CAF50' },
+                    ]}
+                  >
+                    <Text style={styles.statusIcon}>✓</Text>
+                    <Text style={styles.statusText}>Completed</Text>
+                  </View>
+                ) : (
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: getStatusColor(item.status) },
+                    ]}
+                  >
+                    <Text style={styles.statusIcon}>
+                      {getStatusIcon(item.status)}
+                    </Text>
+                    <Text style={styles.statusText}>
+                      {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                    </Text>
+                  </View>
+                )}
+                {(item.status === 'completed' || item.status === 'payment-released') &&
                   item.userRating &&
                   item.userRating > 0 && (
                     <View style={styles.ratingBadge}>
@@ -212,7 +234,7 @@ export default function MyBookingsScreen({ navigation }: any) {
                 }
               >
                 <Text style={styles.detailsButtonText}>
-                  View Details →
+                  View Details ➜
                 </Text>
               </TouchableOpacity>
             </View>
@@ -436,4 +458,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
+  ratingDisplay: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginTop: 8,
+  paddingTop: 8,
+  borderTopWidth: 1,
+  borderTopColor: '#F0F0F0',
+},
+ratingStars: {
+  fontSize: 14,
+  marginRight: 6,
+},
+ratingValue: {
+  fontSize: 13,
+  fontWeight: '700',
+  color: '#FF9800',
+},
 });

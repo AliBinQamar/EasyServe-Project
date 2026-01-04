@@ -1,8 +1,6 @@
-// ============================================
-// screens/Provider/MyBidsScreen.tsx - Enhanced UX Only
-// ============================================
-
 import React, { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable } from 'react-native';
 import {
   ActivityIndicator,
   FlatList,
@@ -20,21 +18,36 @@ import { Bid } from '../../types';
 
 const TAG = 'MyBidsScreen';
 
-// ✅ LOCAL BID STATUS COLORS - ONLY FOR BIDS
+// ✅ UPDATED STATUS COLORS - Including booking statuses
 const BID_STATUS_COLORS = {
   pending: '#FF9800',
   accepted: '#4CAF50',
   rejected: '#F44336',
+  confirmed: '#2196F3',
+  'in-progress': '#FF9800',
+  completed: '#4CAF50',
+  'payment-released': '#4CAF50',
 };
 
 const BID_STATUS_ICONS = {
   pending: '⏳',
   accepted: '✓',
   rejected: '✕',
+  confirmed: '📋',
+  'in-progress': '⚙️',
+  completed: '✓',
+  'payment-released': '💰',
 };
 
+// ✅ ENHANCED BID INTERFACE
+interface EnhancedBid extends Bid {
+  bookingStatus?: string;
+  bookingId?: string;
+  actualStatus?: string; // The real status to display
+}
+
 export default function MyBidsScreen({ navigation }: any) {
-  const [bids, setBids] = useState<Bid[]>([]);
+  const [bids, setBids] = useState<EnhancedBid[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -50,9 +63,44 @@ export default function MyBidsScreen({ navigation }: any) {
 
       logger.info(TAG, `Loading bids for provider: ${user.id}`);
 
+      // ✅ Fetch bids
       const res = await api.get(`/service-requests/provider-bids/${user.id}`);
-      const sortedBids = (res.data || []).sort(
-        (a: Bid, b: Bid) =>
+      
+      // ✅ For each accepted bid, fetch the booking status
+      const bidsWithBookings = await Promise.all(
+        (res.data || []).map(async (bid: Bid) => {
+          if (bid.status === 'accepted') {
+            try {
+              // Fetch booking for this bid
+              const bookingRes = await api.get('/bookings', {
+                params: { 
+                  providerId: user.id,
+                  bidId: bid._id 
+                }
+              });
+              
+              if (bookingRes.data && bookingRes.data.length > 0) {
+                const booking = bookingRes.data[0];
+                return {
+                  ...bid,
+                  bookingStatus: booking.status,
+                  bookingId: booking._id,
+                  actualStatus: booking.status, // Use booking status instead
+                };
+              }
+            } catch (error) {
+              logger.error(TAG, 'Error fetching booking for bid', error);
+            }
+          }
+          return {
+            ...bid,
+            actualStatus: bid.status, // Use bid status if no booking
+          };
+        })
+      );
+
+      const sortedBids = bidsWithBookings.sort(
+        (a: EnhancedBid, b: EnhancedBid) =>
           new Date(b.createdAt || '').getTime() -
           new Date(a.createdAt || '').getTime()
       );
@@ -72,17 +120,28 @@ export default function MyBidsScreen({ navigation }: any) {
     loadBids();
   };
 
-  // ✅ SAFE COLOR GETTER FOR BID STATUS
-  const getBidStatusColor = (status: Bid['status']): string => {
-    return BID_STATUS_COLORS[status] || '#999';
+  const getBidStatusColor = (status: string): string => {
+    return BID_STATUS_COLORS[status as keyof typeof BID_STATUS_COLORS] || '#999';
   };
 
-  // ✅ SAFE ICON GETTER FOR BID STATUS
-  const getBidStatusIcon = (status: Bid['status']): string => {
-    return BID_STATUS_ICONS[status] || '•';
+  const getBidStatusIcon = (status: string): string => {
+    return BID_STATUS_ICONS[status as keyof typeof BID_STATUS_ICONS] || '•';
   };
 
-  // Helper function for better time display
+  // ✅ Helper to get display status text
+  const getDisplayStatusText = (status: string): string => {
+    const statusMap: { [key: string]: string } = {
+      'pending': 'Pending',
+      'accepted': 'Accepted',
+      'rejected': 'Rejected',
+      'confirmed': 'Booking Confirmed',
+      'in-progress': 'Service In Progress',
+      'completed': 'Completed',
+      'payment-released': 'Completed & Paid',
+    };
+    return statusMap[status] || status;
+  };
+
   const getTimeDifference = (createdAt: string) => {
     const now = new Date().getTime();
     const created = new Date(createdAt).getTime();
@@ -99,9 +158,9 @@ export default function MyBidsScreen({ navigation }: any) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backButton}>← Back</Text>
-          </TouchableOpacity>
+            <Pressable onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={26} color="#000" />
+          </Pressable>
           <Text style={styles.title}>My Bids</Text>
           <View style={{ width: 50 }} />
         </View>
@@ -161,14 +220,14 @@ export default function MyBidsScreen({ navigation }: any) {
                 <View
                   style={[
                     styles.statusBadge,
-                    { backgroundColor: getBidStatusColor(item.status) },
+                    { backgroundColor: getBidStatusColor(item.actualStatus || item.status) },
                   ]}
                 >
                   <Text style={styles.statusIcon}>
-                    {getBidStatusIcon(item.status)}
+                    {getBidStatusIcon(item.actualStatus || item.status)}
                   </Text>
                   <Text style={styles.statusText}>
-                    {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                    {getDisplayStatusText(item.actualStatus || item.status)}
                   </Text>
                 </View>
               </View>
@@ -204,13 +263,35 @@ export default function MyBidsScreen({ navigation }: any) {
                     <Text style={styles.pendingText}>Waiting for response</Text>
                   </View>
                 )}
-                {item.status === 'accepted' && (
+                {item.actualStatus === 'confirmed' && (
                   <View style={styles.acceptedIndicator}>
-                    <Text style={styles.acceptedIcon}>🎉</Text>
-                    <Text style={styles.acceptedText}>Bid accepted!</Text>
+                    <Text style={styles.acceptedIcon}>📋</Text>
+                    <Text style={styles.acceptedText}>Booking confirmed!</Text>
+                  </View>
+                )}
+                {item.actualStatus === 'in-progress' && (
+                  <View style={styles.inProgressIndicator}>
+                    <Text style={styles.inProgressIcon}>⚙️</Text>
+                    <Text style={styles.inProgressText}>Service in progress</Text>
+                  </View>
+                )}
+                {(item.actualStatus === 'completed' || item.actualStatus === 'payment-released') && (
+                  <View style={styles.completedIndicator}>
+                    <Text style={styles.completedIcon}>✓</Text>
+                    <Text style={styles.completedText}>Service completed!</Text>
                   </View>
                 )}
               </View>
+
+              {/* ✅ View Booking Button for accepted bids */}
+              {item.bookingId && (
+                <TouchableOpacity
+                  style={styles.viewBookingButton}
+                  onPress={() => navigation.navigate('ProviderBookings')}
+                >
+                  <Text style={styles.viewBookingText}>View Booking Details</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
           contentContainerStyle={styles.list}
@@ -308,7 +389,7 @@ const styles = StyleSheet.create({
   },
   statusIcon: { fontSize: 14, color: '#fff' },
   statusText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: '#fff',
     textTransform: 'uppercase',
@@ -376,5 +457,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#4CAF50',
     fontWeight: '600',
+  },
+  inProgressIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  inProgressIcon: { fontSize: 14 },
+  inProgressText: {
+    fontSize: 12,
+    color: '#FF9800',
+    fontWeight: '600',
+  },
+  completedIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  completedIcon: { fontSize: 14, color: '#4CAF50' },
+  completedText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  viewBookingButton: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  viewBookingText: {
+    fontSize: 14,
+    color: '#2196F3',
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

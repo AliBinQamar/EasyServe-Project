@@ -160,7 +160,7 @@ export default function HomeScreen({ navigation }: any) {
                 <Text style={styles.categoryName}>{item.name}</Text>
 
                 <View style={styles.arrowContainer}>
-                  <Text style={styles.arrow}>→</Text>
+                  <Text style={styles.arrow}>➜</Text>
                 </View>
               </TouchableOpacity>
             );

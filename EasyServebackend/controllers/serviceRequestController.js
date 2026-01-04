@@ -44,8 +44,14 @@ const createServiceRequest = async (req, res) => {
       biddingEndDate,
       minBidAmount,
       maxBidAmount,
-      images
+      images,
+      serviceAddress
     } = req.body;
+     if (!serviceAddress || !serviceAddress.trim()) {
+      return res.status(400).json({ 
+        message: "Service address is required" 
+      });
+    }
     let initialStatus = 'open'; 
 
     const serviceRequest = new ServiceRequest({
@@ -54,6 +60,7 @@ const createServiceRequest = async (req, res) => {
       categoryId,
       categoryName,
       description,
+      serviceAddress: serviceAddress.trim(), 
       requestType,
       fixedAmount: requestType === 'fixed' ? fixedAmount : null,
       biddingEndDate: requestType === 'bidding' ? biddingEndDate : null,
@@ -194,7 +201,8 @@ const acceptBid = async (req, res) => {
 
     const provider = await Provider.findById(bid.providerId);
     if (!provider) return res.status(404).json({ message: "Provider not found" });
-
+bid.status = "accepted";
+    await bid.save();
     // Update request
     request.assignedProviderId = provider._id;
     request.assignedProviderName = provider.name;
@@ -210,6 +218,7 @@ const acceptBid = async (req, res) => {
       userName: request.userName,
       providerId: provider._id,
       providerName: provider.name,
+       serviceAddress: request.serviceAddress,
       agreedPrice: bid.proposedAmount,
       status: "confirmed",
     });

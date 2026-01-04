@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable } from 'react-native';
 import {
   ActivityIndicator,
   Alert,
@@ -74,9 +76,9 @@ export default function ProviderListScreen({ route, navigation }: any) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Back</Text>
-        </TouchableOpacity>
+                  <Pressable onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={26} color="#000" />
+          </Pressable>
         <Text style={styles.title}>{categoryName}</Text>
         <View style={{ width: 50 }} />
       </View>
@@ -198,7 +200,7 @@ export default function ProviderListScreen({ route, navigation }: any) {
 
                   {/* Arrow */}
                   <View style={styles.arrowButton}>
-                    <Text style={styles.arrowIcon}>→</Text>
+                    <Text style={styles.arrowIcon}>➜</Text>
                   </View>
                 </TouchableOpacity>
               );

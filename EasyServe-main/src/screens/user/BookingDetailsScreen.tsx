@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable } from 'react-native';
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +18,7 @@ import api from '../../config/api';
 export default function UserBookingDetailsScreen({ route, navigation }: any) {
   const { bookingId } = route.params;
   const [booking, setBooking] = useState<any>(null);
+  const [provider, setProvider] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
@@ -34,6 +37,16 @@ export default function UserBookingDetailsScreen({ route, navigation }: any) {
       const res = await api.get(`/bookings/${bookingId}`);
       setBooking(res.data);
 
+      // Fetch provider only if providerId exists
+      if (res.data.providerId) {
+        try {
+          const providerRes = await api.get(`/providers/${res.data.providerId}`);
+          setProvider(providerRes.data);
+        } catch (err) {
+          console.warn('Failed to fetch provider info', err);
+        }
+      }
+
       const msgRes = await api.get(`/bookings/${bookingId}/messages`);
       setMessages(msgRes.data || []);
     } catch (error) {
@@ -42,6 +55,7 @@ export default function UserBookingDetailsScreen({ route, navigation }: any) {
       setLoading(false);
     }
   };
+
 
   const handleSendMessage = async () => {
     if (!message.trim()) return;
@@ -118,9 +132,9 @@ export default function UserBookingDetailsScreen({ route, navigation }: any) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backBtn}>← Back</Text>
-          </TouchableOpacity>
+           <Pressable onPress={() => navigation.goBack()}>
+             <Ionicons name="arrow-back" size={26} color="#000" />
+           </Pressable>
           <Text style={styles.title}>Booking Details</Text>
           <View style={{ width: 50 }} />
         </View>
@@ -156,7 +170,7 @@ export default function UserBookingDetailsScreen({ route, navigation }: any) {
           ? 'Provider completed service. Please review and confirm'
           : 'Service is currently in progress',
         actions: booking.completedByProvider
-          ? ['complete', 'dispute', 'message']
+          ? ['completed', 'dispute', 'message']
           : ['message', 'dispute'],
       },
       'completed': {
@@ -225,10 +239,10 @@ export default function UserBookingDetailsScreen({ route, navigation }: any) {
               </View>
               <View style={styles.providerInfo}>
                 <Text style={styles.providerName}>{booking.providerName}</Text>
-                {booking.providerPhone && (
+                {(provider?.phone || booking.providerPhone) && (
                   <View style={styles.contactRow}>
                     <Text style={styles.contactIcon}>📞</Text>
-                    <Text style={styles.providerContact}>{booking.providerPhone}</Text>
+                    <Text style={styles.providerContact}>{provider?.phone || booking.providerPhone}</Text>
                   </View>
                 )}
               </View>
@@ -267,7 +281,17 @@ export default function UserBookingDetailsScreen({ route, navigation }: any) {
               )}
             </View>
           </View>
-
+{booking.serviceAddress && (
+  <View style={styles.addressContainer}>
+    <Text style={styles.addressIcon}>📍</Text>
+    <View style={{ flex: 1 }}>
+      <Text style={styles.addressLabel}>Service Location:</Text>
+      <Text style={styles.addressValue}>
+        {booking.serviceAddress}
+      </Text>
+    </View>
+  </View>
+)}
           {/* Messages */}
           {(booking.status === 'confirmed' || booking.status === 'in-progress' || booking.status === 'completed') && (
             <View style={styles.card}>
@@ -608,4 +632,23 @@ const styles = StyleSheet.create({
   },
   btnIcon: { fontSize: 20 },
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  addressContainer: {
+  flexDirection: 'row',
+  backgroundColor: '#FFF3E0',
+  padding: 12,
+  borderRadius: 10,
+  marginBottom: 12,
+},
+addressIcon: { fontSize: 18, marginRight: 10 },
+addressLabel: {
+  fontSize: 12,
+  color: '#666',
+  fontWeight: '600',
+  marginBottom: 4,
+},
+addressValue: {
+  fontSize: 14,
+  color: '#333',
+  lineHeight: 20,
+},
 });

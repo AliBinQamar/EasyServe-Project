@@ -9,7 +9,7 @@ const BookingSchema = new mongoose.Schema({
 
   providerId: { type: String, required: true },
   providerName: { type: String, required: true },
-
+  serviceAddress: { type: String, required: true },
   agreedPrice: { type: Number, required: true },
   status: {
     type: String,
