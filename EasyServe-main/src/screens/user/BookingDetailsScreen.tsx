@@ -163,7 +163,7 @@ export default function UserBookingDetailsScreen({ route, navigation }: any) {
         color: '#4CAF50',
         bgColor: '#F0FDF4',
         icon: '🎉',
-        message: 'Service completed successfully!',
+        message: 'Service completed successfully & Payment released to provider!',
         actions: ['message'],
       },
       'cancelled': {
@@ -392,7 +392,7 @@ export default function UserBookingDetailsScreen({ route, navigation }: any) {
               </TouchableOpacity>
             )}
 
-            {statusInfo.actions.includes('complete') && (
+            {statusInfo.actions.includes('completed') && (
               <TouchableOpacity style={styles.primaryBtn} onPress={handleConfirmCompletion}>
                 <Text style={styles.btnIcon}>✓</Text>
                 <Text style={styles.primaryBtnText}>
