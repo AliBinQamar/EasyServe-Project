@@ -242,44 +242,45 @@ const providerCompleteService = async (req, res) => {
 const userConfirmBooking = async (req, res) => {
   try {
     const { id, bookingId } = req.params;
-    const finalId = id || bookingId; // Handle both parameter names
+    const finalId = id || bookingId; // Support both param names
     const { rating, review } = req.body;
 
+    // Find the booking
     const booking = await Booking.findById(finalId);
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found ❌' });
     }
 
-    // Check if already confirmed
-    if (booking.status === 'payment-released' || booking.completedByUser) {
-      return res.status(400).json({ message: 'Booking already confirmed ❌' });
+    // Guard: prevent double confirmation
+    if (booking.completedByUser || booking.paymentReleased) {
+      return res.status(400).json({ message: 'Booking already confirmed or payment released ❌' });
     }
 
-    // Check if provider completed first
+    // Provider must complete first
     if (!booking.completedByProvider) {
       return res.status(400).json({ message: 'Provider has not completed the service yet ❌' });
     }
 
-    // Update booking
-    booking.completedByUser = true;
-    booking.userRating = rating;
-    booking.userReview = review;
-    booking.status = 'payment-released';
-    await booking.save();
-
     // ⭐ RELEASE PAYMENT TO PROVIDER WALLET ⭐
-    const Wallet = require('../models/wallet'); // Import Wallet model
+    const Wallet = require('../models/wallet');
 
-    const providerWallet = await Wallet.findOne({ userId: booking.providerId });
+    let providerWallet = await Wallet.findOne({ userId: booking.providerId });
+
+    // Auto-create wallet if first time
     if (!providerWallet) {
-      return res.status(404).json({ message: 'Provider wallet not found ❌' });
+      providerWallet = new Wallet({
+        userId: booking.providerId,
+        userType: 'provider',
+        balance: 0,
+        totalEarned: 0,
+        transactions: [],
+      });
     }
 
-    // Add payment to provider's available balance
+    // Add payment to provider's wallet
     providerWallet.balance += booking.agreedPrice;
     providerWallet.totalEarned += booking.agreedPrice;
 
-    // Add transaction record
     providerWallet.transactions.push({
       type: 'credit',
       amount: booking.agreedPrice,
@@ -291,16 +292,26 @@ const userConfirmBooking = async (req, res) => {
 
     await providerWallet.save();
 
+    // ✅ Update booking AFTER wallet success
+    booking.completedByUser = true;
+    booking.userRating = rating;
+    booking.userReview = review;
+    booking.status = 'payment-released';
+    booking.paymentReleased = true; // Important flag
+    await booking.save();
+
     res.json({
       message: 'Payment released to provider ✅',
       booking,
       walletUpdated: true
     });
+
   } catch (err) {
     console.error('Confirm booking error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
 // GET provider rating and stats
 const getProviderStats = async (req, res) => {
   try {
@@ -315,7 +326,7 @@ const getProviderStats = async (req, res) => {
 
     const totalBookings = bookings.length;
     const completedJobs = bookings.length;
-    
+
     // Calculate average rating
     let averageRating = 0;
     if (totalBookings > 0) {

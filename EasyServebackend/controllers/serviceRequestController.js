@@ -114,16 +114,72 @@ const getServiceRequestById = async (req, res) => {
   }
 };
 // PROVIDER places a bid
+// const placeBid = async (req, res) => {
+//   try {
+//     const {
+//       serviceRequestId,
+//       providerId,
+//       providerName,
+//       proposedAmount,
+//       note,
+//       estimatedTime
+//     } = req.body;
+
+//     const serviceRequest = await ServiceRequest.findById(serviceRequestId);
+
+//     if (!serviceRequest) {
+//       return res.status(404).json({ message: "Service request not found" });
+//     }
+
+//     if (serviceRequest.requestType !== 'bidding') {
+//       return res.status(400).json({ message: "This request is not open for bidding" });
+//     }
+
+//     if (serviceRequest.status !== 'open') {
+//       return res.status(400).json({ message: "Bidding is closed for this request" });
+//     }
+
+//     // Check if provider has already bid
+//     const existingBid = await Bid.findOne({
+//       serviceRequestId,
+//       providerId
+//     });
+
+//     if (existingBid) {
+//       return res.status(400).json({ message: "You have already placed a bid" });
+//     }
+
+//     const bid = new Bid({
+//       serviceRequestId,
+//       providerId,
+//       providerName,
+//       proposedAmount,
+//       note,
+//       estimatedTime
+//     });
+
+//     await bid.save();
+
+//     // Update service request status to bidding
+//     if (serviceRequest.status === 'open') {
+//       serviceRequest.status = 'bidding';
+//       await serviceRequest.save();
+//     }
+
+//     res.status(201).json({
+//       message: "Bid placed successfully",
+//       bid
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Error placing bid",
+//       error: error.message
+//     });
+//   }
+// };
 const placeBid = async (req, res) => {
   try {
-    const {
-      serviceRequestId,
-      providerId,
-      providerName,
-      proposedAmount,
-      note,
-      estimatedTime
-    } = req.body;
+    const { serviceRequestId, providerId, providerName, proposedAmount, note, estimatedTime } = req.body;
 
     const serviceRequest = await ServiceRequest.findById(serviceRequestId);
 
@@ -135,16 +191,13 @@ const placeBid = async (req, res) => {
       return res.status(400).json({ message: "This request is not open for bidding" });
     }
 
-    if (serviceRequest.status !== 'open') {
-      return res.status(400).json({ message: "Bidding is closed for this request" });
+    // Only block if request is already assigned
+    if (serviceRequest.status === 'assigned') {
+      return res.status(400).json({ message: "Request already assigned" });
     }
 
-    // Check if provider has already bid
-    const existingBid = await Bid.findOne({
-      serviceRequestId,
-      providerId
-    });
-
+    // Check if this provider already placed a bid
+    const existingBid = await Bid.findOne({ serviceRequestId, providerId });
     if (existingBid) {
       return res.status(400).json({ message: "You have already placed a bid" });
     }
@@ -160,11 +213,7 @@ const placeBid = async (req, res) => {
 
     await bid.save();
 
-    // Update service request status to bidding
-    if (serviceRequest.status === 'open') {
-      serviceRequest.status = 'bidding';
-      await serviceRequest.save();
-    }
+    // ✅ DO NOT change serviceRequest.status; keep it 'open' until bid is accepted
 
     res.status(201).json({
       message: "Bid placed successfully",
